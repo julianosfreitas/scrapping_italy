@@ -9,7 +9,7 @@ from pathlib import Path
 from fastapi import FastAPI
 
 from app.core.config import get_settings
-from app.routers import auth, documentos, estudantes, paginas
+from app.routers import auth, documentos, estudantes, paginas, universidades
 
 
 @asynccontextmanager
@@ -28,6 +28,7 @@ app = FastAPI(
 app.include_router(auth.router)
 app.include_router(estudantes.router)
 app.include_router(documentos.router)
+app.include_router(universidades.router)
 app.include_router(paginas.router)
 
 
