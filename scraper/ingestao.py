@@ -21,7 +21,7 @@ import httpx
 
 from scraper.coleta import USER_AGENT, coletar
 from scraper.sources import PARSERS
-from scraper.sources.base import UniversidadeColetada
+from scraper.sources.base import NoticiaColetada, UniversidadeColetada
 from scraper.sources.universitaly import URLS_COLETA
 
 API_PADRAO = "http://localhost:8000"
@@ -37,6 +37,31 @@ def _payload(universidade: UniversidadeColetada) -> dict[str, object]:
         if prazo is not None:
             curso["prazo_inscricao"] = prazo.isoformat()
     return corpo
+
+
+def _payload_noticia(noticia: NoticiaColetada) -> dict[str, object]:
+    return {
+        "titulo": noticia.titulo,
+        "resumo": noticia.resumo,
+        "url": noticia.url,
+        "fonte": noticia.fonte,
+        "categoria": noticia.categoria,
+        "idioma": noticia.idioma,
+        "publicada_em": noticia.publicada_em.isoformat() if noticia.publicada_em else None,
+    }
+
+
+def ingerir_noticias(noticias: tuple[NoticiaColetada, ...], api: str, token: str) -> dict[str, int]:
+    """Envia o lote para POST /api/noticias; o dedupe final (URL única) é da api."""
+    resposta = httpx.post(
+        f"{api}/api/noticias",
+        json=[_payload_noticia(n) for n in noticias],
+        headers={"Authorization": f"Bearer {token}", "User-Agent": USER_AGENT},
+        timeout=60,
+    )
+    resposta.raise_for_status()
+    resultado: dict[str, int] = resposta.json()
+    return resultado
 
 
 def obter_token(api: str, email: str, senha: str) -> str:
