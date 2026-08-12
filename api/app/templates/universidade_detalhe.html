@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block titulo %}{{ universidade.nome }} — Ponte Italia{% endblock %}
+{% block conteudo %}
+<a href="/universidades" class="text-sm font-semibold text-verde hover:underline">← Universidades</a>
+
+<div class="mt-4 flex items-start justify-between gap-4 flex-wrap">
+  <div>
+    <h1 class="text-3xl font-extrabold tracking-tight">{{ universidade.nome }}</h1>
+    <p class="mt-1 text-gray-600">{{ universidade.cidade }} · {{ universidade.pais }}</p>
+  </div>
+  {% if universidade.site_oficial %}
+  <a href="{{ universidade.site_oficial }}" target="_blank" rel="noopener"
+     class="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold hover:border-verde/40 transition-colors">
+    Site oficial ↗
+  </a>
+  {% endif %}
+</div>
+
+<h2 class="mt-10 text-xl font-bold">Cursos <span class="text-sm font-normal text-gray-500">(prazo mais próximo primeiro)</span></h2>
+<div class="mt-4 space-y-4">
+  {% for c in cursos %}
+  <div class="rounded-2xl bg-white border border-gray-100 p-6 shadow-sm">
+    <div class="flex items-start justify-between gap-3 flex-wrap">
+      <div>
+        <h3 class="font-bold">{{ c.nome }}</h3>
+        <p class="mt-1 text-sm text-gray-600">
+          {{ "Mestrado" if c.grau.value == "mestrado" else "Graduação" }}
+          {% if c.idioma %} · {{ c.idioma }}{% endif %}
+          {% if c.custo_anual is not none %} · €{{ c.custo_anual }}/ano{% endif %}
+          {% if c.tempo_preparacao_meses %} · preparação ~{{ c.tempo_preparacao_meses }} meses{% endif %}
+        </p>
+      </div>
+      <div class="flex items-center gap-2">
+        {% if c.prazo_proximo %}
+        <span class="rounded-full bg-amber-100 text-amber-800 px-3 py-1 text-xs font-semibold">Prazo próximo</span>
+        {% endif %}
+        <span class="rounded-full bg-gray-100 text-gray-600 px-3 py-1 text-xs font-semibold">
+          {% if c.prazo_inscricao %}Inscrições até {{ c.prazo_inscricao.strftime("%d/%m/%Y") }}{% else %}Prazo a definir{% endif %}
+        </span>
+      </div>
+    </div>
+
+    {% if c.requisitos %}
+    <p class="mt-4 text-xs font-bold uppercase tracking-wide text-gray-500">Documentação exigida</p>
+    <ul class="mt-2 space-y-1 text-sm text-gray-700">
+      {% for r in c.requisitos %}
+      <li>• {{ r.descricao }}
+        <span class="text-xs text-gray-500">({{ r.categoria.value }}{{ ", opcional" if not r.obrigatorio }})</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    <button data-curso="{{ c.id }}"
+            class="adicionar mt-5 hidden rounded-xl bg-verde px-4 py-2 text-sm font-bold text-white hover:opacity-90 transition-opacity">
+      Adicionar ao meu perfil
+    </button>
+  </div>
+  {% else %}
+  <p class="text-gray-500">Nenhum curso cadastrado ainda.</p>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  if (token) {
+    document.querySelectorAll(".adicionar").forEach(botao => {
+      botao.classList.remove("hidden");
+      botao.addEventListener("click", async () => {
+        const resposta = await fetch(`/api/estudantes/${meuId}/universidades`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+          body: JSON.stringify({ curso_id: Number(botao.dataset.curso) }),
+        });
+        if (resposta.ok) {
+          botao.textContent = "Adicionado ✓";
+          botao.disabled = true;
+          botao.classList.replace("bg-verde", "bg-gray-300");
+        } else if (resposta.status === 409) {
+          botao.textContent = "Já está no seu perfil";
+          botao.disabled = true;
+          botao.classList.replace("bg-verde", "bg-gray-300");
+        }
+      });
+    });
+  }
+</script>
+{% endblock %}
