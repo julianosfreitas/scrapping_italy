@@ -9,9 +9,13 @@ passados adiante como valores.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import date, datetime
+from email.utils import parsedate_to_datetime
+from itertools import islice
 from typing import Protocol
+from xml.etree import ElementTree
 
 from bs4 import BeautifulSoup
 from bs4.element import Tag
@@ -61,6 +65,111 @@ class SeletoresFonte:
 
 class Parser(Protocol):
     def __call__(self, html: str) -> tuple[UniversidadeColetada, ...]: ...
+
+
+# ── notícias (Radar, Sprint 4) ───────────────────────────
+
+
+@dataclass(frozen=True)
+class NoticiaColetada:
+    """Item bruto de notícia vindo de uma fonte — imutável desde o nascimento."""
+
+    titulo: str
+    url: str
+    fonte: str
+    resumo: str | None = None
+    idioma: str | None = None
+    publicada_em: datetime | None = None
+    categoria: str = "geral"
+
+
+@dataclass(frozen=True)
+class SeletoresNoticia:
+    """Seletores CSS que especializam o parser genérico de notícias HTML."""
+
+    item: str
+    titulo: str
+    link: str
+    resumo: str | None = None
+    data: str | None = None
+
+
+class ParserNoticias(Protocol):
+    def __call__(self, conteudo: str) -> tuple[NoticiaColetada, ...]: ...
+
+
+def iterar_itens_rss(xml: str) -> Iterator[dict[str, str | None]]:
+    """GERADOR: percorre os <item> de um RSS um a um, sem materializar a lista.
+
+    Feeds grandes (Google News devolve dezenas de itens por query) são
+    consumidos item a item — quem chama decide quantos quer (ex.: islice),
+    e nada além do item corrente ocupa memória.
+    """
+    raiz = ElementTree.fromstring(xml)
+    idioma_feed = raiz.findtext("channel/language")
+    for item in raiz.iterfind("channel/item"):
+        yield {
+            "titulo": item.findtext("title"),
+            "url": item.findtext("link"),
+            "resumo": item.findtext("description"),
+            "data": item.findtext("pubDate"),
+            "idioma": idioma_feed,
+        }
+
+
+def parse_data_rfc822(texto: str | None) -> datetime | None:
+    """'Tue, 11 Aug 2026 08:30:00 GMT' -> datetime; inválido -> None."""
+    if not texto:
+        return None
+    try:
+        return parsedate_to_datetime(texto).replace(tzinfo=None)
+    except (TypeError, ValueError):
+        return None
+
+
+def parse_rss(xml: str, *, fonte: str, maximo_itens: int = 50) -> tuple[NoticiaColetada, ...]:
+    """Parser genérico de RSS — especializado por fonte via functools.partial."""
+    return tuple(
+        NoticiaColetada(
+            titulo=item["titulo"].strip(),
+            url=item["url"].strip(),
+            fonte=fonte,
+            resumo=item["resumo"],
+            idioma=(item["idioma"] or "").split("-")[0] or None,
+            publicada_em=parse_data_rfc822(item["data"]),
+        )
+        for item in islice(iterar_itens_rss(xml), maximo_itens)
+        if item["titulo"] and item["url"]
+    )
+
+
+def parse_noticias_html(
+    html: str,
+    *,
+    fonte: str,
+    seletores: SeletoresNoticia,
+    idioma: str | None = None,
+    base_url: str = "",
+) -> tuple[NoticiaColetada, ...]:
+    """Parser genérico de páginas de notícias — especializado via partial."""
+    sopa = BeautifulSoup(html, "html.parser")
+    return tuple(
+        NoticiaColetada(
+            titulo=titulo,
+            url=url if url.startswith("http") else f"{base_url}{url}",
+            fonte=fonte,
+            resumo=_texto(bloco, seletores.resumo),
+            idioma=idioma,
+            publicada_em=_para_datetime(parse_data_italiana(_texto(bloco, seletores.data))),
+        )
+        for bloco in sopa.select(seletores.item)
+        if (titulo := _texto(bloco, seletores.titulo)) is not None
+        and (url := _atributo_href(bloco, seletores.link)) is not None
+    )
+
+
+def _para_datetime(dia: date | None) -> datetime | None:
+    return datetime(dia.year, dia.month, dia.day) if dia else None
 
 
 def _texto(elemento: Tag, seletor: str | None) -> str | None:

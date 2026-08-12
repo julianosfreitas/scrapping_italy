@@ -11,7 +11,10 @@ from __future__ import annotations
 from collections.abc import Mapping
 from types import MappingProxyType
 
-from scraper.sources.base import Parser
+from scraper.sources.base import Parser, ParserNoticias
+from scraper.sources.google_news import parser_google_news
+from scraper.sources.laziodisco import parser_laziodisco
+from scraper.sources.studyinitaly import parser_studyinitaly
 from scraper.sources.universitaly import parser_universitaly
 
 PARSERS: Mapping[str, Parser] = MappingProxyType(
@@ -20,4 +23,12 @@ PARSERS: Mapping[str, Parser] = MappingProxyType(
     }
 )
 
-__all__ = ["PARSERS", "Parser"]
+PARSERS_NOTICIAS: Mapping[str, ParserNoticias] = MappingProxyType(
+    {
+        "google_news": parser_google_news,
+        "laziodisco": parser_laziodisco,
+        "studyinitaly": parser_studyinitaly,
+    }
+)
+
+__all__ = ["PARSERS", "PARSERS_NOTICIAS", "Parser", "ParserNoticias"]
