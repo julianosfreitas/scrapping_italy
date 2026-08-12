@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Ponte Italia{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            fundo: "#FAFAF7",
+            grafite: "#1F2933",
+            verde: "#2E7D5B",
+            "verde-claro": "#EAF3EF",
+          },
+          fontFamily: { sans: ["Inter", "system-ui", "sans-serif"] },
+        },
+      },
+    };
+  </script>
+</head>
+<body class="bg-fundo text-grafite font-sans min-h-screen flex flex-col antialiased">
+  <header class="border-b border-gray-200 bg-fundo/90 backdrop-blur sticky top-0 z-10">
+    <nav class="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+      <a href="/" class="font-extrabold text-lg tracking-tight">Ponte <span class="text-verde">Italia</span></a>
+      <div class="flex items-center gap-6 text-sm font-semibold">
+        <a href="/estudantes" class="hover:text-verde transition-colors">Estudantes</a>
+        <a id="nav-login" href="/login"
+           class="rounded-xl bg-verde px-4 py-2 text-white hover:opacity-90 transition-opacity">Entrar</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="flex-1 w-full max-w-5xl mx-auto px-6 py-10">
+    {% block conteudo %}{% endblock %}
+  </main>
+
+  <footer class="border-t border-gray-200 py-6 text-center text-sm text-gray-500">
+    Ponte Italia — sua jornada acadêmica rumo à Itália, organizada.
+  </footer>
+
+  <script>
+    // Sessão simples (fase 1): token JWT no localStorage
+    const token = localStorage.getItem("token");
+    const meuId = localStorage.getItem("estudante_id");
+    if (token) {
+      const btn = document.getElementById("nav-login");
+      btn.textContent = "Meu perfil";
+      btn.href = "/estudantes/" + meuId;
+    }
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

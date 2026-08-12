@@ -2,15 +2,33 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from pathlib import Path
+
 from fastapi import FastAPI
 
 from app.core.config import get_settings
+from app.routers import auth, documentos, estudantes, paginas
+
+
+@asynccontextmanager
+async def _ciclo_de_vida(_app: FastAPI) -> AsyncIterator[None]:
+    Path(get_settings().upload_dir).mkdir(parents=True, exist_ok=True)
+    yield
+
 
 app = FastAPI(
     title="Ponte Italia — API",
     description="Plataforma de intercâmbio acadêmico Brasil → Itália/Europa.",
-    version="0.1.0",
+    version="0.2.0",
+    lifespan=_ciclo_de_vida,
 )
+
+app.include_router(auth.router)
+app.include_router(estudantes.router)
+app.include_router(documentos.router)
+app.include_router(paginas.router)
 
 
 @app.get("/health")

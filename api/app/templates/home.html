@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block titulo %}Ponte Italia — estude na Itália sem se perder no caminho{% endblock %}
+{% block conteudo %}
+<section class="py-14 text-center">
+  <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight leading-tight">
+    Estudar na Itália é complexo.<br>
+    <span class="text-verde">Seu processo não precisa ser.</span>
+  </h1>
+  <p class="mt-5 max-w-2xl mx-auto text-lg text-gray-600">
+    Documentos, universidades, prazos e notícias de visto — espalhados em dezenas de sites.
+    A Ponte Italia reúne tudo em um único perfil.
+  </p>
+  <a href="/login" class="mt-8 inline-block rounded-2xl bg-verde px-8 py-4 text-white font-bold text-lg shadow-sm hover:opacity-90 transition-opacity">
+    Criar meu perfil
+  </a>
+</section>
+
+<section class="grid gap-6 md:grid-cols-2 py-10">
+  <div class="rounded-2xl bg-white p-7 shadow-sm border border-gray-100">
+    <div class="h-10 w-10 rounded-xl bg-verde-claro flex items-center justify-center mb-4">
+      <svg class="h-5 w-5 text-verde" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6M9 8h6M5 21h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2Z"/></svg>
+    </div>
+    <h2 class="font-bold text-lg">Um perfil, toda a documentação</h2>
+    <p class="mt-2 text-gray-600">Passaporte, histórico, certificados de idioma: suba uma única vez, com validade e status sempre à vista.</p>
+  </div>
+  <div class="rounded-2xl bg-white p-7 shadow-sm border border-gray-100">
+    <div class="h-10 w-10 rounded-xl bg-verde-claro flex items-center justify-center mb-4">
+      <svg class="h-5 w-5 text-verde" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-6m4 6V7m4 10v-3M4 21h16"/></svg>
+    </div>
+    <h2 class="font-bold text-lg">Comparativo automático</h2>
+    <p class="mt-2 text-gray-600">Ao salvar uma universidade, veja o gap: o que você já tem, o que falta e o que está vencendo.</p>
+  </div>
+  <div class="rounded-2xl bg-white p-7 shadow-sm border border-gray-100">
+    <div class="h-10 w-10 rounded-xl bg-verde-claro flex items-center justify-center mb-4">
+      <svg class="h-5 w-5 text-verde" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2m6.4.6-1.5 1.5M21 12h-2M5 12H3m3.1-4.9L4.6 5.6M12 8a4 4 0 0 1 4 4c0 1.5-.8 2.4-1.6 3.2-.6.6-1 1.2-1.2 1.8h-2.4c-.2-.6-.6-1.2-1.2-1.8C8.8 14.4 8 13.5 8 12a4 4 0 0 1 4-4Zm-1 13h2"/></svg>
+    </div>
+    <h2 class="font-bold text-lg">Radar de oportunidades</h2>
+    <p class="mt-2 text-gray-600">Bolsas, prazos e mudanças de visto coletados todos os dias das fontes oficiais.</p>
+  </div>
+  <div class="rounded-2xl bg-white p-7 shadow-sm border border-gray-100">
+    <div class="h-10 w-10 rounded-xl bg-verde-claro flex items-center justify-center mb-4">
+      <svg class="h-5 w-5 text-verde" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m3 7 9 6 9-6M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/></svg>
+    </div>
+    <h2 class="font-bold text-lg">Newsletter diária às 9h</h2>
+    <p class="mt-2 text-gray-600">Os 10 tópicos essenciais do dia para quem está no processo, direto no seu e-mail.</p>
+  </div>
+</section>
+{% endblock %}

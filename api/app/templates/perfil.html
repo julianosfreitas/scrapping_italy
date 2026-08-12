@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block titulo %}{{ estudante.nome }} — Ponte Italia{% endblock %}
+{% block conteudo %}
+<div class="flex items-center gap-5">
+  <div class="h-16 w-16 rounded-full bg-verde-claro flex items-center justify-center text-2xl font-bold text-verde">
+    {{ estudante.nome[:1] }}
+  </div>
+  <div>
+    <h1 class="text-3xl font-extrabold tracking-tight">{{ estudante.nome }}</h1>
+    <p class="text-gray-600">{{ estudante.area_estudo or "Área não informada" }}</p>
+  </div>
+</div>
+
+{% if estudante.bio %}<p class="mt-5 max-w-2xl text-gray-600">{{ estudante.bio }}</p>{% endif %}
+
+<div class="mt-4 flex gap-2 text-xs font-semibold">
+  {% if estudante.nivel_italiano %}<span class="rounded-full bg-verde-claro text-verde px-3 py-1">Italiano {{ estudante.nivel_italiano }}</span>{% endif %}
+  {% if estudante.nivel_ingles %}<span class="rounded-full bg-gray-100 text-gray-600 px-3 py-1">Inglês {{ estudante.nivel_ingles }}</span>{% endif %}
+</div>
+
+<section class="mt-12">
+  <div class="flex items-center justify-between">
+    <h2 class="text-xl font-bold">Cofre de documentos</h2>
+    <button id="btn-upload" class="hidden rounded-xl bg-verde px-4 py-2 text-sm font-bold text-white hover:opacity-90 transition-opacity">
+      Enviar documento
+    </button>
+  </div>
+
+  <p id="cofre-aviso" class="mt-4 rounded-2xl bg-white border border-gray-100 p-6 text-gray-600">
+    Carregando…
+  </p>
+  <div id="cofre" class="mt-4 space-y-8"></div>
+
+  <form id="form-upload" class="hidden mt-6 rounded-2xl bg-white border border-gray-100 p-6 space-y-4 shadow-sm">
+    <h3 class="font-bold">Novo documento</h3>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div>
+        <label class="block text-sm font-semibold mb-1" for="categoria">Categoria</label>
+        <select id="categoria" class="w-full rounded-xl border border-gray-200 px-3 py-2.5">
+          <option value="identidade">Identidade</option>
+          <option value="academico">Acadêmico</option>
+          <option value="financeiro">Financeiro</option>
+          <option value="idioma">Idioma</option>
+          <option value="visto">Visto</option>
+          <option value="outros">Outros</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-1" for="tipo">Tipo (ex.: passaporte)</label>
+        <input id="tipo" required minlength="2" class="w-full rounded-xl border border-gray-200 px-4 py-2.5">
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-1" for="validade">Validade (opcional)</label>
+        <input id="validade" type="date" class="w-full rounded-xl border border-gray-200 px-4 py-2.5">
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-1" for="arquivo">Arquivo (pdf, jpg, png)</label>
+        <input id="arquivo" type="file" required accept=".pdf,.jpg,.jpeg,.png" class="w-full text-sm">
+      </div>
+    </div>
+    <p id="erro-upload" class="hidden text-sm text-red-700"></p>
+    <button type="submit" class="rounded-xl bg-verde px-5 py-2.5 text-sm font-bold text-white hover:opacity-90 transition-opacity">Enviar</button>
+  </form>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const donoId = {{ estudante.id }};
+  const cofre = document.getElementById("cofre");
+  const aviso = document.getElementById("cofre-aviso");
+  const rotulos = { identidade: "Identidade", academico: "Acadêmico", financeiro: "Financeiro",
+                    idioma: "Idioma", visto: "Visto", outros: "Outros" };
+  const badges = {
+    ok:       'bg-verde-claro text-verde',
+    vencendo: 'bg-amber-100 text-amber-800',
+    vencido:  'bg-red-100 text-red-800',
+  };
+  const textoBadge = { ok: "Em dia", vencendo: "Vencendo", vencido: "Vencido" };
+
+  async function carregarCofre() {
+    if (!token || String(donoId) !== meuId) {
+      aviso.textContent = token
+        ? "O cofre de documentos é privado: só o dono do perfil pode vê-lo."
+        : "Entre na sua conta para ver o cofre de documentos.";
+      return;
+    }
+    document.getElementById("btn-upload").classList.remove("hidden");
+    const resposta = await fetch(`/api/estudantes/${donoId}/documentos`, {
+      headers: { Authorization: "Bearer " + token },
+    });
+    if (!resposta.ok) { aviso.textContent = "Sessão expirada — entre novamente."; return; }
+    const documentos = await resposta.json();
+    if (documentos.length === 0) { aviso.textContent = "Nenhum documento no cofre ainda."; return; }
+    aviso.classList.add("hidden");
+
+    const porCategoria = {};
+    for (const documento of documentos)
+      (porCategoria[documento.categoria] ??= []).push(documento);
+
+    cofre.innerHTML = Object.entries(porCategoria).map(([categoria, docs]) => `
+      <div>
+        <h3 class="text-sm font-bold uppercase tracking-wide text-gray-500">${rotulos[categoria] ?? categoria}</h3>
+        <div class="mt-3 grid gap-3 sm:grid-cols-2">
+          ${docs.map(d => `
+            <div class="rounded-2xl bg-white border border-gray-100 p-5 shadow-sm">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <p class="font-semibold">${d.tipo}</p>
+                  <p class="text-xs text-gray-500 mt-0.5">${d.nome_arquivo}</p>
+                  ${d.data_validade ? `<p class="text-xs text-gray-500 mt-0.5">Válido até ${d.data_validade}</p>` : ""}
+                </div>
+                <span class="rounded-full px-3 py-1 text-xs font-semibold ${badges[d.status]}">${textoBadge[d.status]}</span>
+              </div>
+              <button data-doc="${d.id}" class="baixar mt-4 text-sm font-semibold text-verde hover:underline">Baixar</button>
+            </div>`).join("")}
+        </div>
+      </div>`).join("");
+
+    document.querySelectorAll(".baixar").forEach(botao => botao.addEventListener("click", async () => {
+      const resposta = await fetch(`/api/documentos/${botao.dataset.doc}/url-assinada`, {
+        headers: { Authorization: "Bearer " + token },
+      });
+      if (resposta.ok) window.open((await resposta.json()).url, "_blank");
+    }));
+  }
+
+  document.getElementById("btn-upload").addEventListener("click", () =>
+    document.getElementById("form-upload").classList.toggle("hidden"));
+
+  document.getElementById("form-upload").addEventListener("submit", async (evento) => {
+    evento.preventDefault();
+    const erro = document.getElementById("erro-upload");
+    erro.classList.add("hidden");
+    const dados = new FormData();
+    dados.append("arquivo", document.getElementById("arquivo").files[0]);
+    dados.append("categoria", document.getElementById("categoria").value);
+    dados.append("tipo", document.getElementById("tipo").value);
+    const validade = document.getElementById("validade").value;
+    if (validade) dados.append("data_validade", validade);
+    const resposta = await fetch(`/api/estudantes/${donoId}/documentos`, {
+      method: "POST", headers: { Authorization: "Bearer " + token }, body: dados,
+    });
+    if (!resposta.ok) {
+      erro.textContent = (await resposta.json()).detail || "Falha no envio";
+      erro.classList.remove("hidden");
+      return;
+    }
+    document.getElementById("form-upload").reset();
+    document.getElementById("form-upload").classList.add("hidden");
+    carregarCofre();
+  });
+
+  carregarCofre();
+</script>
+{% endblock %}
