@@ -12,11 +12,11 @@
 
 | # | Conceito | Status | Onde |
 |---|----------|--------|------|
-| 1 | Funções puras | 🟨 parcial | `api/app/core/config.py` (`parse_env_linhas`, `montar_settings`), `api/app/seed.py` (`faltantes`); exemplo central em `api/app/services/comparativo.py` (planejado, Sprint 3) |
-| 2 | Imutabilidade (`frozen=True`) | 🟨 parcial | `Settings` em `api/app/core/config.py`, `EstudanteSeed` em `api/app/seed.py` |
+| 1 | Funções puras | ✅ implementado | `calcular_status` em `api/app/services/documentos.py`; também `parse_env_linhas`, `montar_settings`, `faltantes`; comparativo (Sprint 3) será o 2º exemplo central |
+| 2 | Imutabilidade (`frozen=True`) | ✅ implementado | schemas Pydantic (`ConfigDict(frozen=True)`) em `api/app/schemas/`, `Settings` e `EstudanteSeed` (dataclasses) |
 | 3 | Funções de primeira classe | ⬜ pendente | registry de parsers do scraper |
-| 4 | Funções de alta ordem (HOF) | ⬜ pendente | pipeline de limpeza de notícias |
-| 5 | Transparência referencial | ⬜ pendente | justificativa do `lru_cache` |
+| 4 | Funções de alta ordem (HOF) | 🟨 parcial | `agrupar_por_categoria(itens, categoria_de)` em `api/app/services/documentos.py`; pipeline de notícias (Sprint 4) será o exemplo central |
+| 5 | Transparência referencial | ✅ implementado | `calcular_status` com relógio injetado (entrada 5); justificativa do `lru_cache` se aprofunda na Sprint 3 |
 | 6 | lambda | ⬜ pendente | `sorted(key=...)` no ranking |
 | 7 | map / filter | ⬜ pendente | `scraper/pipeline.py` |
 | 8 | functools.reduce | ⬜ pendente | score de prontidão do estudante |
@@ -25,7 +25,7 @@
 | 11 | functools.partial | ⬜ pendente | parsers especializados por fonte |
 | 12 | functools.lru_cache | 🟨 parcial | `get_settings()` em `api/app/core/config.py`; exemplo central (requisitos por curso) na Sprint 3 |
 | 13 | Closures | ✅ implementado | `retry_backoff` em `api/app/core/decoradores.py` |
-| 14 | Decoradores (@wraps) | ✅ implementado | `@cronometrar` e `@retry_backoff` em `api/app/core/decoradores.py` |
+| 14 | Decoradores (@wraps) | ✅ implementado | `@cronometrar`, `@retry_backoff` e `@exigir_auth` (`api/app/core/seguranca.py`) |
 | 15 | Recursão | ⬜ pendente | árvore de categorias do FAQ |
 | 16 | Comparação imperativo × funcional | ⬜ pendente | estudo de caso do relatório |
 
@@ -125,6 +125,106 @@ constantes globais ou de uma classe com atributos mutáveis
 (`RetryHelper.max_tentativas = 3`), compartilhada entre chamadores — qualquer
 ajuste em um ponto vazaria para os demais, e o teste exigiria patch de
 `time.sleep` global.
+
+---
+
+### 1. Função pura — `calcular_status` do cofre de documentos
+
+**Onde:** `api/app/services/documentos.py` → `calcular_status()`
+**Sprint:** 2 · **Commit:** `86cfed6`
+
+```python
+def calcular_status(
+    data_validade: date | None,
+    data_atual: date,
+    janela_vencendo_dias: int = JANELA_VENCENDO_DIAS,
+) -> StatusDocumento:
+    if data_validade is None:
+        return StatusDocumento.OK
+    if data_validade < data_atual:
+        return StatusDocumento.VENCIDO
+    if data_validade <= data_atual + timedelta(days=janela_vencendo_dias):
+        return StatusDocumento.VENCENDO
+    return StatusDocumento.OK
+```
+
+**Por que funcional ajudou:** o status NÃO é coluna no banco — é derivado no
+momento da leitura, então nunca fica defasado (um documento que venceu ontem
+aparece como vencido hoje sem nenhum job de atualização). A data atual entra
+como parâmetro em vez de `date.today()` dentro da função: isso a torna
+determinística e permitiu uma bateria de testes de fronteira (vence hoje,
+vence em exatos 30 dias, em 31, sem validade) fixando `data_atual` — nenhum
+teste depende do relógio da máquina.
+
+**Equivalente imperativo:** persistir `status` na tabela e atualizá-lo por
+rotina agendada (cron) ou em cada escrita — duas fontes de verdade, status
+defasado entre execuções e testes dependentes de estado do banco.
+
+### 5. Transparência referencial — mesma entrada, mesma saída
+
+**Onde:** `api/app/services/documentos.py` → `calcular_status()` · teste
+`test_transparencia_referencial` em `api/tests/test_status_documento.py`
+**Sprint:** 2 · **Commit:** `86cfed6`
+
+```python
+def test_transparencia_referencial() -> None:
+    resultados = {calcular_status(HOJE + timedelta(days=10), HOJE) for _ in range(100)}
+    assert resultados == {StatusDocumento.VENCENDO}
+```
+
+**Por que funcional ajudou:** como a função não lê relógio, banco nem estado
+global, qualquer chamada pode ser substituída pelo seu valor sem mudar o
+programa — a definição operacional de transparência referencial. É essa
+propriedade que torna seguro memoizar resultados (base do `lru_cache` que o
+comparativo da Sprint 3 vai explorar) e paralelizar chamadas sem lock.
+
+### 2. Imutabilidade — schemas Pydantic congelados
+
+**Onde:** `api/app/schemas/` (todos os schemas) → `ConfigDict(frozen=True)`
+**Sprint:** 2 · **Commit:** `6cc100b`
+
+```python
+class _Congelado(BaseModel):
+    model_config = ConfigDict(frozen=True, from_attributes=True)
+
+
+class EstudanteCriar(_Congelado):
+    nome: str = Field(min_length=2, max_length=120)
+    email: str = Field(pattern=PADRAO_EMAIL, max_length=255)
+    senha: str = Field(min_length=8, max_length=128)
+```
+
+**Por que funcional ajudou:** os DTOs que atravessam a API são imutáveis por
+construção — tentar `dados.email = "x"` levanta erro em vez de introduzir um
+bug silencioso. Um schema recebido por um router pode ser passado a qualquer
+função sem cópia defensiva, porque ninguém consegue alterá-lo; edições
+parciais geram um novo dict via `model_dump(exclude_unset=True)` em vez de
+mutar o objeto.
+
+### 14b. Decorador de autorização — `@exigir_auth`
+
+**Onde:** `api/app/core/seguranca.py` → `exigir_auth()`
+**Sprint:** 2 · **Commit:** `2403005`
+
+```python
+def exigir_auth[**P, R](funcao: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:
+    @wraps(funcao)
+    async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        request = next(
+            (v for v in (*args, *kwargs.values()) if isinstance(v, Request)), None
+        )
+        payload = decodificar_token(_extrair_bearer(request), get_settings().jwt_segredo)
+        request.state.estudante_id = int(payload["sub"])
+        return await funcao(*args, **kwargs)
+    return wrapper
+```
+
+**Por que funcional ajudou:** a autorização é uma preocupação transversal —
+como função de alta ordem, ela envolve qualquer endpoint sem que ele conheça
+JWT: o endpoint recebe `request.state.estudante_id` já validado. O `@wraps`
+preserva a assinatura, essencial aqui porque o FastAPI inspeciona os
+parâmetros do endpoint para montar a injeção de dependências e a
+documentação OpenAPI.
 
 ---
 
