@@ -12,18 +12,18 @@
 
 | # | Conceito | Status | Onde |
 |---|----------|--------|------|
-| 1 | Funções puras | ✅ implementado | `calcular_status` em `api/app/services/documentos.py`; também `parse_env_linhas`, `montar_settings`, `faltantes`; comparativo (Sprint 3) será o 2º exemplo central |
+| 1 | Funções puras | ✅ implementado | **CENTRAL: `calcular_gap` em `api/app/services/comparativo.py`**; também `calcular_status`, `parse_env_linhas`, `faltantes` |
 | 2 | Imutabilidade (`frozen=True`) | ✅ implementado | schemas Pydantic (`ConfigDict(frozen=True)`) em `api/app/schemas/`, `Settings` e `EstudanteSeed` (dataclasses) |
-| 3 | Funções de primeira classe | ⬜ pendente | registry de parsers do scraper |
+| 3 | Funções de primeira classe | ✅ implementado | registry `PARSERS` em `scraper/sources/__init__.py` |
 | 4 | Funções de alta ordem (HOF) | 🟨 parcial | `agrupar_por_categoria(itens, categoria_de)` em `api/app/services/documentos.py`; pipeline de notícias (Sprint 4) será o exemplo central |
-| 5 | Transparência referencial | ✅ implementado | `calcular_status` com relógio injetado (entrada 5); justificativa do `lru_cache` se aprofunda na Sprint 3 |
-| 6 | lambda | ⬜ pendente | `sorted(key=...)` no ranking |
+| 5 | Transparência referencial | ✅ implementado | `calcular_status` (relógio injetado) + justificativa do cache em `requisitos_por_categoria` (entrada 12) |
+| 6 | lambda | ✅ implementado | `sorted(key=lambda ...)` em `ordenar_por_prazo` (`api/app/services/cursos.py`) |
 | 7 | map / filter | ⬜ pendente | `scraper/pipeline.py` |
 | 8 | functools.reduce | ⬜ pendente | score de prontidão do estudante |
-| 9 | Comprehensions | ⬜ pendente | normalização de scraping |
+| 9 | Comprehensions | 🟨 parcial | `parse_universidades` em `scraper/sources/base.py` (aninhadas com filtro); pipeline da Sprint 4 será o exemplo central |
 | 10 | Generators / lazy | ⬜ pendente | paginação do feed |
-| 11 | functools.partial | ⬜ pendente | parsers especializados por fonte |
-| 12 | functools.lru_cache | 🟨 parcial | `get_settings()` em `api/app/core/config.py`; exemplo central (requisitos por curso) na Sprint 3 |
+| 11 | functools.partial | ✅ implementado | `parser_universitaly` em `scraper/sources/universitaly.py` |
+| 12 | functools.lru_cache | ✅ implementado | `requisitos_por_categoria` em `api/app/services/comparativo.py` (+ `get_settings`) |
 | 13 | Closures | ✅ implementado | `retry_backoff` em `api/app/core/decoradores.py` |
 | 14 | Decoradores (@wraps) | ✅ implementado | `@cronometrar`, `@retry_backoff` e `@exigir_auth` (`api/app/core/seguranca.py`) |
 | 15 | Recursão | ⬜ pendente | árvore de categorias do FAQ |
@@ -225,6 +225,165 @@ JWT: o endpoint recebe `request.state.estudante_id` já validado. O `@wraps`
 preserva a assinatura, essencial aqui porque o FastAPI inspeciona os
 parâmetros do endpoint para montar a injeção de dependências e a
 documentação OpenAPI.
+
+### 1 (CENTRAL). Função pura — `calcular_gap`, o comparativo de documentos
+
+**Onde:** `api/app/services/comparativo.py` → `calcular_gap()`
+**Sprint:** 3 · **Commit:** `ea7bae5`
+
+```python
+def calcular_gap(
+    requisitos: tuple[Requisito, ...],
+    documentos: tuple[DocumentoResumo, ...],
+) -> Gap:
+    docs_por_categoria = agrupar_por_categoria(documentos, lambda d: d.categoria)
+    avaliacoes = tuple(
+        _avaliar(requisito, docs_por_categoria.get(categoria, ()))
+        for categoria, do_grupo in requisitos_por_categoria(requisitos).items()
+        for requisito in do_grupo
+    )
+    return Gap(
+        atendidos=tuple(i for s, i in avaliacoes if s == "atendido"),
+        faltando=tuple(i for s, i in avaliacoes if s == "faltando"),
+        vencendo=tuple(i for s, i in avaliacoes if s == "vencendo"),
+    )
+```
+
+**Por que funcional ajudou:** este é o cálculo mais importante do produto — é
+ele que diz ao estudante o que falta para se candidatar — e é uma função sem
+NENHUM efeito colateral: recebe tuplas de dataclasses congeladas, devolve um
+`Gap` congelado, não conhece banco, HTTP nem relógio (o status dos documentos
+chega já derivado por `calcular_status`, outra função pura — composição). As
+consequências práticas:
+
+1. **Testabilidade total**: a bateria de 14 testes cobre todos os cruzamentos
+   (ok/vencendo/vencido/ausente, precedências, partição completa) sem mock,
+   sem fixture de banco, sem setup — cada teste são três linhas.
+2. **Nenhum estado para dar errado**: dois requests simultâneos, ou dois
+   estudantes comparando o mesmo curso, não compartilham nada mutável — o
+   paralelismo é seguro por construção.
+3. **Raciocínio local**: a regra de negócio inteira (OK atende > VENCENDO
+   alerta > resto falta) está em `_avaliar`, legível em 10 linhas, sem
+   `SELECT` no meio.
+4. **Reuso de HOF**: o agrupamento por categoria é o mesmo
+   `agrupar_por_categoria` do cofre — a função recebe a chave como função
+   (`lambda d: d.categoria`) e serve aos dois domínios.
+
+**Equivalente imperativo (para o slide de comparação):**
+
+```python
+# Versão acoplada: consulta ao banco no meio do cálculo, listas mutadas,
+# impossível de testar sem MySQL de pé e dados semeados.
+def calcular_gap_imperativo(curso_id, estudante_id, sessao):
+    atendidos, faltando, vencendo = [], [], []
+    requisitos = sessao.execute(
+        "SELECT * FROM requisitos_curso WHERE curso_id = %s", curso_id
+    )
+    for req in requisitos:
+        docs = sessao.execute(  # N+1: uma query por requisito
+            "SELECT * FROM documentos WHERE estudante_id = %s AND categoria = %s",
+            (estudante_id, req.categoria),
+        )
+        achou = False
+        for doc in docs:
+            if doc.status == "ok":        # status defasado lido do banco!
+                atendidos.append(req)
+                achou = True
+                break
+        if not achou:
+            ...  # mais flags e appends aninhados
+    return {"atendidos": atendidos, "faltando": faltando, "vencendo": vencendo}
+```
+
+A versão imperativa mistura três responsabilidades (buscar, derivar status,
+particionar), depende de um `status` persistido que envelhece, e cada teste
+precisa montar um banco. A versão pura separa o I/O (routers) do cálculo e
+faz o cálculo ser trivialmente verificável.
+
+### 12. `functools.lru_cache` — índice de requisitos por curso
+
+**Onde:** `api/app/services/comparativo.py` → `requisitos_por_categoria()`
+**Sprint:** 3 · **Commit:** `ea7bae5`
+
+```python
+@lru_cache(maxsize=256)
+def requisitos_por_categoria(
+    requisitos: tuple[Requisito, ...],
+) -> Mapping[CategoriaDocumento, tuple[Requisito, ...]]:
+    return MappingProxyType(agrupar_por_categoria(requisitos, lambda r: r.categoria))
+```
+
+**Por que funcional ajudou (a parte que faltava do conceito 5):** memoizar só
+é CORRETO quando a função é referencialmente transparente — e aqui os três
+pré-requisitos são garantidos pelo desenho: (a) entrada hashável e imutável
+(tupla de dataclasses congeladas), (b) função determinística sem efeitos,
+(c) saída imutável (`MappingProxyType`), então compartilhar o resultado entre
+chamadores não cria acoplamento. O mesmo curso é comparado por muitos
+estudantes: a indexação roda uma vez por curso, não uma vez por request — e o
+teste comprova com `cache_info()` que a segunda chamada é *hit* e devolve o
+MESMO objeto. Cachear uma função impura (que lesse o banco) seria um bug de
+dados obsoletos; cachear esta é apenas otimização invisível.
+
+### 3. Funções de primeira classe — registry de parsers
+
+**Onde:** `scraper/sources/__init__.py` → `PARSERS`
+**Sprint:** 3 · **Commit:** `14f5211`
+
+```python
+PARSERS: Mapping[str, Parser] = MappingProxyType(
+    {
+        "universitaly": parser_universitaly,
+    }
+)
+
+# consumo em scraper/coleta.py:
+parser = PARSERS[fonte]   # a função é um VALOR escolhido por nome
+universidades = parser(html)
+```
+
+**Por que funcional ajudou:** parsers são valores num mapeamento imutável —
+`coletar()` seleciona o parser por nome e o invoca sem nenhum
+`if fonte == "universitaly"` espalhado. Fonte nova (Sprint 4) é uma linha no
+registry; o código de coleta não muda. O `MappingProxyType` impede mutação em
+runtime — o registry é montado uma vez, no import, e vira dado somente-leitura.
+
+### 11. `functools.partial` — parser especializado por fonte
+
+**Onde:** `scraper/sources/universitaly.py` → `parser_universitaly`
+**Sprint:** 3 · **Commit:** `14f5211`
+
+```python
+parser_universitaly = partial(
+    parse_universidades, fonte="universitaly", seletores=SELETORES_UNIVERSITALY
+)
+```
+
+**Por que funcional ajudou:** o parser genérico (`parse_universidades`) sabe
+transformar HTML em tuplas imutáveis dados os seletores; cada fonte é só uma
+APLICAÇÃO PARCIAL dele com a configuração pré-preenchida — sem subclasse, sem
+copiar código, sem `self`. O teste verifica inclusive que
+`parser_universitaly.keywords["fonte"] == "universitaly"`: a especialização é
+um dado inspecionável, não uma hierarquia de classes.
+
+### 6. lambda — ordenação de cursos por prazo
+
+**Onde:** `api/app/services/cursos.py` → `ordenar_por_prazo()`
+**Sprint:** 3 · **Commit:** `ea7bae5`
+
+```python
+def ordenar_por_prazo[T](
+    cursos: Iterable[T], prazo_de: Callable[[T], date | None]
+) -> tuple[T, ...]:
+    return tuple(sorted(cursos, key=lambda c: (prazo_de(c) is None, prazo_de(c) or date.max)))
+```
+
+**Por que funcional ajudou:** a lambda como argumento de `sorted` expressa a
+regra de ordenação inteira — "quem tem prazo vem antes, prazo mais próximo
+primeiro" — em uma tupla-chave, sem loop de comparação manual. Seguindo a
+PEP 8 (regra do CLAUDE.md), a lambda só aparece inline como argumento; a
+função nomeada `ordenar_por_prazo` é um `def`. Os chamadores passam o extrator
+de prazo (`lambda c: c.prazo_inscricao`), então a MESMA ordenação serve para
+cursos ORM e para associações — outra HOF na prática.
 
 ---
 
