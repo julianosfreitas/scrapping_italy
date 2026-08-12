@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block titulo %}Radar — Ponte Italia{% endblock %}
+{% block conteudo %}
+<h1 class="text-3xl font-extrabold tracking-tight">Radar</h1>
+<p class="mt-2 text-gray-600">Bolsas, vistos, prazos e notícias — coletados todos os dias das fontes oficiais.</p>
+
+<form method="get" action="/radar" class="mt-6 flex flex-wrap gap-3 items-end">
+  <div>
+    <label class="block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1" for="categoria">Categoria</label>
+    <select id="categoria" name="categoria" class="rounded-xl border border-gray-200 px-3 py-2.5 text-sm">
+      <option value="">Todas</option>
+      {% for c in categorias %}
+      <option value="{{ c }}" {{ "selected" if c == categoria_ativa }}>{{ rotulos.get(c, c) }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1" for="fonte">Fonte</label>
+    <select id="fonte" name="fonte" class="rounded-xl border border-gray-200 px-3 py-2.5 text-sm">
+      <option value="">Todas</option>
+      {% for f in fontes %}
+      <option value="{{ f }}" {{ "selected" if f == fonte_ativa }}>{{ f.replace("_", " ") | title }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button class="rounded-xl bg-verde px-5 py-2.5 text-sm font-bold text-white hover:opacity-90 transition-opacity">Filtrar</button>
+</form>
+
+<div class="mt-6 space-y-4">
+  {% for n in feed.itens %}
+  <a href="{{ n.url }}" target="_blank" rel="noopener"
+     class="block rounded-2xl bg-white border border-gray-100 p-6 shadow-sm hover:border-verde/40 hover:shadow transition-all">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <h2 class="font-bold leading-snug">{{ n.titulo }}</h2>
+        {% if n.resumo %}<p class="mt-2 text-sm text-gray-600 line-clamp-2">{{ n.resumo }}</p>{% endif %}
+      </div>
+      <span class="shrink-0 rounded-full bg-verde-claro text-verde px-3 py-1 text-xs font-semibold">
+        {{ rotulos.get(n.categoria, n.categoria) }}
+      </span>
+    </div>
+    <div class="mt-3 flex gap-2 text-xs font-semibold text-gray-500">
+      <span class="rounded-full bg-gray-100 px-3 py-1">{{ n.fonte.replace("_", " ") | title }}</span>
+      {% if n.publicada_em %}
+      <span class="rounded-full bg-gray-100 px-3 py-1">{{ n.publicada_em.strftime("%d/%m/%Y") }}</span>
+      {% endif %}
+      {% if n.idioma %}<span class="rounded-full bg-gray-100 px-3 py-1 uppercase">{{ n.idioma }}</span>{% endif %}
+    </div>
+  </a>
+  {% else %}
+  <p class="rounded-2xl bg-white border border-gray-100 p-6 text-gray-500">
+    Nenhuma notícia {% if categoria_ativa or fonte_ativa %}para esses filtros{% else %}coletada ainda{% endif %}.
+  </p>
+  {% endfor %}
+</div>
+
+{% if feed.total_paginas > 1 %}
+<nav class="mt-8 flex items-center justify-center gap-2 text-sm font-semibold">
+  {% set query = (("&categoria=" + categoria_ativa) if categoria_ativa else "") + (("&fonte=" + fonte_ativa) if fonte_ativa else "") %}
+  {% if feed.pagina > 1 %}
+  <a href="/radar?pagina={{ feed.pagina - 1 }}{{ query }}" class="rounded-xl border border-gray-200 px-4 py-2 hover:border-verde/40">← Anterior</a>
+  {% endif %}
+  <span class="px-3 text-gray-500">página {{ feed.pagina }} de {{ feed.total_paginas }}</span>
+  {% if feed.pagina < feed.total_paginas %}
+  <a href="/radar?pagina={{ feed.pagina + 1 }}{{ query }}" class="rounded-xl border border-gray-200 px-4 py-2 hover:border-verde/40">Próxima →</a>
+  {% endif %}
+</nav>
+{% endif %}
+{% endblock %}
