@@ -47,6 +47,14 @@ class Settings:
     mysql_password: str
     redis_host: str
     redis_port: int
+    jwt_segredo: str
+    jwt_exp_minutos: int
+    upload_dir: str
+    upload_max_mb: int
+
+    @property
+    def upload_max_bytes(self) -> int:
+        return self.upload_max_mb * 1024 * 1024
 
     @property
     def database_url(self) -> str:
@@ -81,6 +89,10 @@ def montar_settings(ambiente: dict[str, str]) -> Settings:
         mysql_password=ambiente.get("MYSQL_PASSWORD", "ponte"),
         redis_host=ambiente.get("REDIS_HOST", "localhost"),
         redis_port=int(ambiente.get("REDIS_PORT", "6379")),
+        jwt_segredo=ambiente.get("JWT_SEGREDO", "dev-troque-em-producao-por-32-bytes-ou-mais"),
+        jwt_exp_minutos=int(ambiente.get("JWT_EXP_MINUTOS", "120")),
+        upload_dir=ambiente.get("UPLOAD_DIR", str(_RAIZ_REPO / "uploads")),
+        upload_max_mb=int(ambiente.get("UPLOAD_MAX_MB", "10")),
     )
 
 
