@@ -1,0 +1,43 @@
+# ── Python ────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ── .NET ──────────────────────────────────────────────────
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# ── Node (fase 2) ─────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-error.log*
+.vite/
+
+# ── Segredos e ambiente ──────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Uploads e volumes locais ─────────────────────────────
+uploads/
+*.sqlite3
+
+# ── Editores / SO ────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
