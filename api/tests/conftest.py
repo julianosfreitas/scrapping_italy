@@ -43,6 +43,13 @@ def cliente(
     monkeypatch.setenv("JWT_SEGREDO", "segredo-somente-teste-com-32-bytes-ok")
     get_settings.cache_clear()
 
+    # testes nunca tocam o Redis real: cada teste tem seu próprio SQLite,
+    # e um cache compartilhado vazaria dados entre eles
+    from app.core import cache as modulo_cache
+
+    modulo_cache.get_redis.cache_clear()
+    monkeypatch.setattr(modulo_cache, "get_redis", lambda: None)
+
     def _sessao_de_teste() -> Iterator[Session]:
         with sessao_teste() as sessao:
             yield sessao
