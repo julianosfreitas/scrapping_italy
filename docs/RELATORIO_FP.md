@@ -15,13 +15,13 @@
 | 1 | Funções puras | ✅ implementado | **CENTRAL: `calcular_gap` em `api/app/services/comparativo.py`**; também `calcular_status`, `parse_env_linhas`, `faltantes` |
 | 2 | Imutabilidade (`frozen=True`) | ✅ implementado | schemas Pydantic (`ConfigDict(frozen=True)`) em `api/app/schemas/`, `Settings` e `EstudanteSeed` (dataclasses) |
 | 3 | Funções de primeira classe | ✅ implementado | registry `PARSERS` em `scraper/sources/__init__.py` |
-| 4 | Funções de alta ordem (HOF) | 🟨 parcial | `agrupar_por_categoria(itens, categoria_de)` em `api/app/services/documentos.py`; pipeline de notícias (Sprint 4) será o exemplo central |
+| 4 | Funções de alta ordem (HOF) | ✅ implementado | **CENTRAL: `processar` em `scraper/pipeline.py`** (composição map→filter→dedupe→map); também `agrupar_por_categoria`, `_coletar_paginas`, `ordenar_por_prazo` |
 | 5 | Transparência referencial | ✅ implementado | `calcular_status` (relógio injetado) + justificativa do cache em `requisitos_por_categoria` (entrada 12) |
 | 6 | lambda | ✅ implementado | `sorted(key=lambda ...)` em `ordenar_por_prazo` (`api/app/services/cursos.py`) |
-| 7 | map / filter | ⬜ pendente | `scraper/pipeline.py` |
-| 8 | functools.reduce | ⬜ pendente | score de prontidão do estudante |
-| 9 | Comprehensions | 🟨 parcial | `parse_universidades` em `scraper/sources/base.py` (aninhadas com filtro); pipeline da Sprint 4 será o exemplo central |
-| 10 | Generators / lazy | ⬜ pendente | paginação do feed |
+| 7 | map / filter | ✅ implementado | `processar` e `filtrar_por_categoria` em `scraper/pipeline.py` |
+| 8 | functools.reduce | ✅ implementado | `estatisticas` em `scraper/pipeline.py` (score de prontidão já coberto pelo percentual do Gap) |
+| 9 | Comprehensions | ✅ implementado | normalização de scraping: `parse_rss`, `parse_noticias_html`, `parse_universidades` (`scraper/sources/base.py`) |
+| 10 | Generators / lazy | ✅ implementado | `iterar_itens_rss` (`scraper/sources/base.py`) + `paginar`/`janelas` (`api/app/services/feed.py`) |
 | 11 | functools.partial | ✅ implementado | `parser_universitaly` em `scraper/sources/universitaly.py` |
 | 12 | functools.lru_cache | ✅ implementado | `requisitos_por_categoria` em `api/app/services/comparativo.py` (+ `get_settings`) |
 | 13 | Closures | ✅ implementado | `retry_backoff` em `api/app/core/decoradores.py` |
@@ -384,6 +384,137 @@ PEP 8 (regra do CLAUDE.md), a lambda só aparece inline como argumento; a
 função nomeada `ordenar_por_prazo` é um `def`. Os chamadores passam o extrator
 de prazo (`lambda c: c.prazo_inscricao`), então a MESMA ordenação serve para
 cursos ORM e para associações — outra HOF na prática.
+
+### 4 (CENTRAL). Funções de alta ordem — o pipeline de limpeza do Radar
+
+**Onde:** `scraper/pipeline.py` → `processar()`
+**Sprint:** 4 · **Commit:** `ccbbfb8`
+
+```python
+def processar(brutas: tuple[NoticiaColetada, ...]) -> tuple[NoticiaColetada, ...]:
+    normalizadas = map(normalizar, brutas)
+    validas = filter(eh_valida, normalizadas)
+    unicas = dedupe_por_url(tuple(validas))
+    return tuple(map(classificar, unicas))
+```
+
+**Por que funcional ajudou:** o pipeline inteiro é a COMPOSIÇÃO de quatro
+funções puras nomeadas — `normalizar`, `eh_valida`, `dedupe_por_url`,
+`classificar` — passadas como valores para `map`/`filter`. Cada etapa é
+testada isolada em três linhas; a composição é testada como um todo; e trocar
+a ordem, remover ou acrescentar uma etapa é editar UMA linha, não desemaranhar
+um loop de 40 linhas com flags. Como nenhuma etapa tem efeito colateral,
+notícias de fontes diferentes podem atravessar o pipeline em qualquer ordem —
+ou em paralelo — com o mesmo resultado. A infraestrutura de coleta usa o
+mesmo princípio: `_coletar_paginas(parser, urls, obter, dormir)` recebe
+TODAS as suas dependências como funções, e é por isso que os 34 testes do
+scraper rodam sem rede e sem dormir.
+
+### 7. `map`/`filter` — limpeza declarativa
+
+**Onde:** `scraper/pipeline.py` → `processar()`, `filtrar_por_categoria()`
+**Sprint:** 4 · **Commit:** `ccbbfb8`
+
+```python
+def filtrar_por_categoria(
+    noticias: tuple[NoticiaColetada, ...], categoria: str
+) -> tuple[NoticiaColetada, ...]:
+    return tuple(filter(lambda n: n.categoria == categoria, noticias))
+```
+
+**Por que funcional ajudou:** `map` e `filter` declaram O QUE acontece com a
+coleção (transformar, peneirar) sem gerenciar COMO (índices, appends,
+continues). São lazy: em `processar`, nenhuma lista intermediária é
+materializada entre a normalização e a validação — os itens fluem um a um
+até a tupla final. O predicado é dado como lambda inline (PEP 8) ou função
+nomeada, o que os torna reutilizáveis e testáveis por si.
+
+### 8. `functools.reduce` — estatísticas da coleta
+
+**Onde:** `scraper/pipeline.py` → `estatisticas()`
+**Sprint:** 4 · **Commit:** `ccbbfb8`
+
+```python
+def _acumular(acc: Mapping[str, int], noticia: NoticiaColetada) -> Mapping[str, int]:
+    fonte = f"fonte:{noticia.fonte}"
+    categoria = f"categoria:{noticia.categoria}"
+    return {
+        **acc,
+        "total": acc.get("total", 0) + 1,
+        fonte: acc.get(fonte, 0) + 1,
+        categoria: acc.get(categoria, 0) + 1,
+    }
+
+def estatisticas(noticias: tuple[NoticiaColetada, ...]) -> Mapping[str, int]:
+    vazio: Mapping[str, int] = {}
+    resultado: Mapping[str, int] = reduce(_acumular, noticias, vazio)
+    return MappingProxyType(dict(resultado))
+```
+
+**Por que funcional ajudou:** `reduce` dobra a coleção inteira num único
+valor com UMA regra local (`_acumular`): dado o acumulado e um item, produz
+um NOVO acumulado — sem `total += 1` espalhado, sem dict global mutado. Na
+coleta real da sprint, foi este reduce que produziu
+`{'total': 111, 'fonte:google_news': 100, 'categoria:vistos': 31, ...}` de
+uma passada. O resultado sai como `MappingProxyType`: quem recebe não
+consegue corromper os contadores.
+
+### 9. Comprehensions — normalização do scraping
+
+**Onde:** `scraper/sources/base.py` → `parse_rss()`, `parse_noticias_html()`
+**Sprint:** 4 · **Commit:** `943254f`
+
+```python
+return tuple(
+    NoticiaColetada(
+        titulo=titulo,
+        url=url if url.startswith("http") else f"{base_url}{url}",
+        fonte=fonte,
+        resumo=_texto(bloco, seletores.resumo),
+        ...
+    )
+    for bloco in sopa.select(seletores.item)
+    if (titulo := _texto(bloco, seletores.titulo)) is not None
+    and (url := _atributo_href(bloco, seletores.link)) is not None
+)
+```
+
+**Por que funcional ajudou:** a comprehension expressa transformação E
+filtragem numa única construção declarativa — "para cada bloco que tem
+título e link, construa uma NoticiaColetada" — em vez de loop + append +
+continue. O walrus (`:=`) evita extrair o mesmo campo duas vezes, e o
+resultado nasce direto como tupla imutável. Blocos malformados (sem título,
+sem link) simplesmente não passam pelo `if` — o caso de erro não precisa de
+código.
+
+### 10. Generators — leitura lazy e paginação sob demanda
+
+**Onde:** `scraper/sources/base.py` → `iterar_itens_rss()` ·
+`api/app/services/feed.py` → `paginar()`, `janelas()`
+**Sprint:** 4 · **Commit:** `943254f` / `fcc3004`
+
+```python
+def iterar_itens_rss(xml: str) -> Iterator[dict[str, str | None]]:
+    raiz = ElementTree.fromstring(xml)
+    idioma_feed = raiz.findtext("channel/language")
+    for item in raiz.iterfind("channel/item"):
+        yield { "titulo": item.findtext("title"), ... }
+
+def paginar[T](itens: Iterable[T], pagina: int, por_pagina: int) -> tuple[T, ...]:
+    inicio = (pagina - 1) * por_pagina
+    return tuple(islice(itens, inicio, inicio + por_pagina))
+```
+
+**Por que funcional ajudou (memória/lazy evaluation):** o generator produz um
+item por vez, quando pedido — o feed do Google News chega com dezenas de
+itens, mas só os `maximo_itens` consumidos pelo `islice` viram objetos. Na
+API, `paginar` recebe o `Result` lazy do SQLAlchemy e consome SÓ as linhas
+da página: o teste `test_paginar_e_lazy_ate_com_iteravel_infinito` pagina
+`itertools.count()` — um iterável INFINITO — e termina, o que seria
+impossível se a função materializasse a entrada. Outro teste instrumentado
+prova que, pedida a página 1 de 3 itens, exatamente 3 itens são produzidos
+de um gerador de 999. `janelas()` complementa: um gerador de páginas
+consecutivas que a newsletter (Sprint 5) consumirá lote a lote.
 
 ---
 
