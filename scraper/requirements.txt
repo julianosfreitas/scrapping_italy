@@ -1,0 +1,5 @@
+# Dependências do serviço de scraping (seção 4 do README).
+# O pacote da api (instalado com `pip install -e api`) fornece o decorador
+# @retry_backoff reutilizado nas requisições.
+httpx>=0.27
+beautifulsoup4>=4.12
