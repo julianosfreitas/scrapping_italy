@@ -9,6 +9,10 @@ from scraper.coleta import INTERVALO_SEGUNDOS, ColetaBloqueada, coletar, pode_ra
 FIXTURE = (Path(__file__).parent / "fixtures" / "universitaly_atenei.html").read_text(
     encoding="utf-8"
 )
+LAZIODISCO = (Path(__file__).parent / "fixtures" / "laziodisco_busca.html").read_text(
+    encoding="utf-8"
+)
+RSS = (Path(__file__).parent / "fixtures" / "google_news.xml").read_text(encoding="utf-8")
 
 ROBOTS_PERMISSIVO = "User-agent: *\nAllow: /\n"
 ROBOTS_RESTRITIVO = "User-agent: *\nDisallow: /cerca-corsi\n"
@@ -56,3 +60,46 @@ def test_coletar_barrado_pelo_robots() -> None:
 
 def test_coletar_sem_urls_devolve_vazio() -> None:
     assert coletar("universitaly", (), obter=lambda u: "", dormir=lambda _s: None) == ()
+
+
+def test_robots_404_significa_permitido() -> None:
+    """Semântica padrão: host sem robots.txt não impõe restrições."""
+    import httpx
+
+    from scraper.coleta import coletar_noticias
+
+    def obter_falso(url: str) -> str:
+        if url.endswith("robots.txt"):
+            pedido = httpx.Request("GET", url)
+            raise httpx.HTTPStatusError(
+                "404", request=pedido, response=httpx.Response(404, request=pedido)
+            )
+        return LAZIODISCO
+
+    noticias = coletar_noticias(
+        "laziodisco",
+        ("https://www.laziodisco.it/?s=bando",),
+        obter=obter_falso,
+        dormir=lambda _s: None,
+    )
+    assert len(noticias) == 2
+
+
+def test_rss_pula_checagem_de_robots() -> None:
+    """checar_robots=False: nenhuma requisição a robots.txt é feita."""
+    from scraper.coleta import coletar_noticias
+
+    pedidas: list[str] = []
+
+    def obter_falso(url: str) -> str:
+        pedidas.append(url)
+        return RSS
+
+    coletar_noticias(
+        "google_news",
+        ("https://news.google.com/rss/search?q=x",),
+        obter=obter_falso,
+        dormir=lambda _s: None,
+        checar_robots=False,
+    )
+    assert all(not url.endswith("robots.txt") for url in pedidas)
