@@ -39,7 +39,8 @@ DESTINO = RAIZ / "api" / "app" / "static" / "img"
 CORTE_LUMINANCIA = 140
 # o lettering começa por volta de 68% da altura; acima disso fica só a marca
 FIM_DA_MARCA = 0.675
-VERDE = "#2E7D5B"
+VERDE = "#2E7D5B"  # verde de ação do site (seção 8 do README)
+SALVIA = "#797963"  # tom do próprio logo impresso — usado no e-mail e nos slides
 
 
 def silhueta(caminho: Path) -> Image.Image:
@@ -100,10 +101,19 @@ def main() -> int:
         como_svg(marca, "#FFFFFF", "Ponte Italia"), encoding="utf-8"
     )
 
-    # PNG da marca para o e-mail: cliente de e-mail não renderiza SVG
-    png_marca = colorir(marca, VERDE)
-    png_marca.thumbnail((240, 240), Image.LANCZOS)
-    png_marca.save(DESTINO / "logo-marca.png")
+    (DESTINO / "logo-marca-salvia.svg").write_text(
+        como_svg(marca, SALVIA, "Ponte Italia"), encoding="utf-8"
+    )
+    (DESTINO / "logo-completo-salvia.svg").write_text(
+        como_svg(completo, SALVIA, "Ponte Italia"), encoding="utf-8"
+    )
+
+    # PNG da marca: cliente de e-mail não renderiza SVG. O e-mail usa a
+    # variante sálvia, que é a cor do logo impresso no papel.
+    for nome, cor in (("logo-marca.png", VERDE), ("logo-marca-salvia.png", SALVIA)):
+        png_marca = colorir(marca, cor)
+        png_marca.thumbnail((240, 240), Image.LANCZOS)
+        png_marca.save(DESTINO / nome)
 
     # favicon: a marca centrada num quadrado, com respiro nas bordas
     for tamanho in (32, 180):

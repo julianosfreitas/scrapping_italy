@@ -103,12 +103,31 @@ public class MontagemEdicaoTests
     }
 
     [Fact]
-    public async Task Usa_a_paleta_da_secao_8_do_readme()
+    public async Task Usa_a_paleta_de_pergaminho_do_logo()
     {
         var html = await new RenderizadorRazor().RenderizarAsync(EdicaoExemplo());
 
-        Assert.Contains("#FAFAF7", html); // fundo off-white
-        Assert.Contains("#1F2933", html); // grafite
-        Assert.Contains("#2E7D5B", html); // verde de ação
+        Assert.Contains("#F2E5D5", html); // creme do papel
+        Assert.Contains("#BFAE99", html); // bege das bordas
+        Assert.Contains("#797963", html); // sálvia dos filetes
+        Assert.Contains("#1B1A18", html); // tinta
+    }
+
+    [Fact]
+    public async Task Traz_o_link_para_a_noticia_original()
+    {
+        var html = await new RenderizadorRazor().RenderizarAsync(EdicaoExemplo(itens: 2));
+
+        Assert.Contains("https://esempio.it/visto-1", html);
+        Assert.Contains("Ler a notícia completa", html);
+    }
+
+    [Fact]
+    public async Task Escreve_a_data_por_extenso_em_portugues()
+    {
+        var html = await new RenderizadorRazor().RenderizarAsync(EdicaoExemplo());
+
+        // independe do idioma da máquina que roda o worker
+        Assert.Contains("13 de agosto de 2026", html);
     }
 }

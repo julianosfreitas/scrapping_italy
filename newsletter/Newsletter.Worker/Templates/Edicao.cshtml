@@ -1,4 +1,13 @@
 @model Newsletter.Worker.Modelos.Edicao
+@*
+    Carta antiga sobre pergaminho — a paleta vem do papel do próprio logo:
+    creme #F2E5D5, bege #BFAE99, sálvia #797963 e tinta #1B1A18.
+
+    Restrições de e-mail respeitadas: layout em <table>, estilos inline,
+    nenhuma fonte externa (serifas do sistema) e nenhuma imagem de fundo —
+    o "pergaminho" é feito com bordas e cores sólidas, que todo cliente
+    renderiza igual, inclusive Outlook.
+*@
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -6,66 +15,111 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ponte Italia — edição de @Model.Data.ToString("dd/MM/yyyy")</title>
 </head>
-<body style="margin:0;padding:0;background:#FAFAF7;color:#1F2933;
-             font-family:Inter,'Segoe UI',system-ui,sans-serif;">
+<body style="margin:0;padding:0;background:#E3E2DF;color:#1B1A18;
+             font-family:Georgia,'Times New Roman',serif;">
+
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
-         style="background:#FAFAF7;padding:32px 16px;">
+         style="background:#E3E2DF;padding:28px 14px;">
     <tr>
       <td align="center">
+
+        <!-- folha de pergaminho -->
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
-               style="max-width:600px;background:#FFFFFF;border:1px solid #EEEEEE;
-                      border-radius:16px;padding:32px;">
+               style="max-width:600px;background:#F2E5D5;
+                      border:1px solid #BFAE99;border-radius:2px;">
+
+          <!-- filete superior, como o vinco de uma carta -->
+          <tr><td style="height:6px;background:#797963;font-size:0;line-height:0;">&nbsp;</td></tr>
 
           <tr>
-            <td style="padding-bottom:12px;">
+            <td style="padding:34px 44px 0 44px;" align="center">
               <img src="cid:logo-ponte-italia" alt="Ponte Italia"
-                   width="56" height="40"
+                   width="72" height="52"
                    style="display:block;border:0;outline:none;text-decoration:none;">
             </td>
           </tr>
+
           <tr>
-            <td style="padding-bottom:8px;font-size:20px;font-weight:800;letter-spacing:-0.02em;">
-              Ponte <span style="color:#2E7D5B;">Italia</span>
+            <td align="center" style="padding:14px 44px 0 44px;">
+              <div style="font-size:13px;letter-spacing:3px;text-transform:uppercase;
+                          color:#797963;">Ponte Italia</div>
+              <div style="margin-top:10px;font-size:15px;font-style:italic;color:#5A5A47;">
+                Carta de @Model.Data.ToString("dd 'de' MMMM 'de' yyyy")
+              </div>
             </td>
           </tr>
+
+          <!-- ornamento divisor -->
           <tr>
-            <td style="padding-bottom:24px;font-size:14px;color:#6B7280;">
-              Sua edição de @Model.Data.ToString("dd/MM/yyyy") —
-              @Model.Total seleção(ões) em @Model.Topicos.Count tópico(s).
+            <td align="center" style="padding:20px 44px 0 44px;">
+              @* o filete vai num <div> de 1px dentro da célula: se a cor
+                 fosse fundo da própria <td>, ela esticaria até a altura do
+                 ornamento do meio e viraria uma barra grossa *@
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td valign="middle">
+                    <div style="height:1px;background:#BFAE99;font-size:0;line-height:0;">&nbsp;</div>
+                  </td>
+                  <td width="34" align="center" valign="middle"
+                      style="font-size:14px;color:#797963;padding:0 8px;">&#10022;</td>
+                  <td valign="middle">
+                    <div style="height:1px;background:#BFAE99;font-size:0;line-height:0;">&nbsp;</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:22px 44px 0 44px;font-size:16px;line-height:1.65;color:#1B1A18;">
+              Prezado(a) estudante,
+              <div style="margin-top:10px;">
+                seguem os destaques desta data para quem está a caminho da Itália —
+                @Model.Total seleção(ões) em @Model.Topicos.Count tópico(s),
+                traduzidos e resumidos.
+              </div>
             </td>
           </tr>
 
           @foreach (var topico in Model.Topicos)
           {
             <tr>
-              <td style="padding:20px 0 8px 0;">
-                <span style="display:inline-block;background:#EAF3EF;color:#2E7D5B;
-                             border-radius:999px;padding:5px 12px;font-size:11px;
-                             font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">
-                  @topico.Rotulo
-                </span>
+              <td style="padding:30px 44px 0 44px;">
+                <div style="font-size:12px;letter-spacing:2.5px;text-transform:uppercase;
+                            color:#5A5A47;border-bottom:1px solid #BFAE99;
+                            padding-bottom:7px;">@topico.Rotulo</div>
               </td>
             </tr>
+
             @foreach (var item in topico.Itens)
             {
               <tr>
-                <td style="padding:8px 0;border-bottom:1px solid #F3F4F6;">
-                  <a href="@item.Url"
-                     style="color:#1F2933;font-size:15px;font-weight:700;
-                            text-decoration:none;line-height:1.4;">@item.Titulo</a>
+                <td style="padding:18px 44px 0 44px;">
+                  <div style="font-size:17px;font-weight:bold;line-height:1.4;color:#1B1A18;">
+                    @item.Titulo
+                  </div>
+
                   @if (!string.IsNullOrWhiteSpace(item.Resumo))
                   {
-                    <p style="margin:6px 0 0 0;font-size:13px;color:#6B7280;line-height:1.5;">
+                    <div style="margin-top:7px;font-size:15px;line-height:1.6;color:#3C3A34;">
                       @item.Resumo
-                    </p>
+                    </div>
                   }
-                  <p style="margin:6px 0 0 0;font-size:11px;color:#9CA3AF;">
+
+                  <div style="margin-top:9px;font-size:13px;color:#797963;">
                     @item.Fonte.Replace("_", " ")
                     @if (item.PublicadaEm is not null)
                     {
-                      @: · @item.PublicadaEm.Value.ToString("dd/MM/yyyy")
+                      @: &middot; @item.PublicadaEm.Value.ToString("dd/MM/yyyy")
                     }
-                  </p>
+                  </div>
+
+                  <div style="margin-top:9px;">
+                    <a href="@item.Url"
+                       style="display:inline-block;font-size:14px;color:#5A5A47;
+                              text-decoration:none;border-bottom:1px solid #BFAE99;
+                              padding-bottom:2px;">Ler a notícia completa &rarr;</a>
+                  </div>
                 </td>
               </tr>
             }
@@ -74,19 +128,49 @@
           @if (Model.Topicos.Count == 0)
           {
             <tr>
-              <td style="padding:16px 0;font-size:14px;color:#6B7280;">
-                Nenhuma notícia se encaixou nos 10 tópicos hoje. Amanhã tem mais.
+              <td style="padding:24px 44px 0 44px;font-size:16px;line-height:1.6;color:#3C3A34;">
+                Nenhuma notícia se encaixou nos dez tópicos essenciais nesta data.
+                Amanhã a carta volta.
               </td>
             </tr>
           }
 
           <tr>
-            <td style="padding-top:28px;font-size:12px;color:#9CA3AF;line-height:1.6;">
-              Você recebe este e-mail porque se inscreveu na newsletter do Ponte Italia.
-              Para cancelar, acesse a página da newsletter no site.
+            <td align="center" style="padding:32px 44px 0 44px;">
+              @* o filete vai num <div> de 1px dentro da célula: se a cor
+                 fosse fundo da própria <td>, ela esticaria até a altura do
+                 ornamento do meio e viraria uma barra grossa *@
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td valign="middle">
+                    <div style="height:1px;background:#BFAE99;font-size:0;line-height:0;">&nbsp;</div>
+                  </td>
+                  <td width="34" align="center" valign="middle"
+                      style="font-size:14px;color:#797963;padding:0 8px;">&#10022;</td>
+                  <td valign="middle">
+                    <div style="height:1px;background:#BFAE99;font-size:0;line-height:0;">&nbsp;</div>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
+
+          <tr>
+            <td style="padding:18px 44px 34px 44px;font-size:13px;line-height:1.7;
+                       color:#5A5A47;" align="center">
+              <div style="font-style:italic;font-size:15px;color:#3C3A34;">
+                Boa jornada, e até a próxima carta.
+              </div>
+              <div style="margin-top:14px;">
+                Você recebe esta carta porque se inscreveu na newsletter do Ponte Italia.
+                Para cancelar, acesse a página da newsletter no site.
+              </div>
+            </td>
+          </tr>
+
+          <tr><td style="height:6px;background:#797963;font-size:0;line-height:0;">&nbsp;</td></tr>
         </table>
+
       </td>
     </tr>
   </table>
