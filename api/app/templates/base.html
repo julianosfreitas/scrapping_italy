@@ -4,6 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block titulo %}Ponte Italia{% endblock %}</title>
+  <link rel="icon" href="/static/img/favicon.ico" sizes="any">
+  <link rel="icon" href="/static/img/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/img/favicon-180.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -26,7 +29,11 @@
 <body class="bg-fundo text-grafite font-sans min-h-screen flex flex-col antialiased">
   <header class="border-b border-gray-200 bg-fundo/90 backdrop-blur sticky top-0 z-10">
     <nav class="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-      <a href="/" class="font-extrabold text-lg tracking-tight">Ponte <span class="text-verde">Italia</span></a>
+      <a href="/" class="flex items-center gap-2.5 font-extrabold text-lg tracking-tight
+                         focus:outline-none focus:ring-2 focus:ring-verde rounded-lg">
+        <img src="/static/img/logo-marca.svg" alt="" width="40" height="29" class="h-7 w-auto">
+        <span>Ponte <span class="text-verde">Italia</span></span>
+      </a>
       <div class="flex items-center gap-6 text-sm font-semibold">
         <a href="/estudantes" class="hover:text-verde transition-colors">Estudantes</a>
         <a href="/universidades" class="hover:text-verde transition-colors">Universidades</a>
