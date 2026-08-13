@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- o RazorLight compila o .cshtml em runtime e precisa das referências -->
+    <PreserveCompilationContext>true</PreserveCompilationContext>
+    <UserSecretsId>dotnet-Newsletter.Worker-4a5de54d-9749-474a-bb09-b5d17db022a8</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MailKit" Version="4.17.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="Quartz.Extensions.Hosting" Version="3.19.1" />
+    <PackageReference Include="RazorLight" Version="2.3.1" />
+    <PackageReference Include="StackExchange.Redis" Version="3.1.13" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- o template acompanha o binário: o renderizador o lê de AppContext.BaseDirectory -->
+    <Content Include="Templates\**\*.cshtml" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,87 @@
+@model Newsletter.Worker.Modelos.Edicao
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ponte Italia — edição de @Model.Data.ToString("dd/MM/yyyy")</title>
+</head>
+<body style="margin:0;padding:0;background:#FAFAF7;color:#1F2933;
+             font-family:Inter,'Segoe UI',system-ui,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+         style="background:#FAFAF7;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+               style="max-width:600px;background:#FFFFFF;border:1px solid #EEEEEE;
+                      border-radius:16px;padding:32px;">
+
+          <tr>
+            <td style="padding-bottom:8px;font-size:20px;font-weight:800;letter-spacing:-0.02em;">
+              Ponte <span style="color:#2E7D5B;">Italia</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding-bottom:24px;font-size:14px;color:#6B7280;">
+              Sua edição de @Model.Data.ToString("dd/MM/yyyy") —
+              @Model.Total seleção(ões) em @Model.Topicos.Count tópico(s).
+            </td>
+          </tr>
+
+          @foreach (var topico in Model.Topicos)
+          {
+            <tr>
+              <td style="padding:20px 0 8px 0;">
+                <span style="display:inline-block;background:#EAF3EF;color:#2E7D5B;
+                             border-radius:999px;padding:5px 12px;font-size:11px;
+                             font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">
+                  @topico.Rotulo
+                </span>
+              </td>
+            </tr>
+            @foreach (var item in topico.Itens)
+            {
+              <tr>
+                <td style="padding:8px 0;border-bottom:1px solid #F3F4F6;">
+                  <a href="@item.Url"
+                     style="color:#1F2933;font-size:15px;font-weight:700;
+                            text-decoration:none;line-height:1.4;">@item.Titulo</a>
+                  @if (!string.IsNullOrWhiteSpace(item.Resumo))
+                  {
+                    <p style="margin:6px 0 0 0;font-size:13px;color:#6B7280;line-height:1.5;">
+                      @item.Resumo
+                    </p>
+                  }
+                  <p style="margin:6px 0 0 0;font-size:11px;color:#9CA3AF;">
+                    @item.Fonte.Replace("_", " ")
+                    @if (item.PublicadaEm is not null)
+                    {
+                      @: · @item.PublicadaEm.Value.ToString("dd/MM/yyyy")
+                    }
+                  </p>
+                </td>
+              </tr>
+            }
+          }
+
+          @if (Model.Topicos.Count == 0)
+          {
+            <tr>
+              <td style="padding:16px 0;font-size:14px;color:#6B7280;">
+                Nenhuma notícia se encaixou nos 10 tópicos hoje. Amanhã tem mais.
+              </td>
+            </tr>
+          }
+
+          <tr>
+            <td style="padding-top:28px;font-size:12px;color:#9CA3AF;line-height:1.6;">
+              Você recebe este e-mail porque se inscreveu na newsletter do Ponte Italia.
+              Para cancelar, acesse a página da newsletter no site.
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
