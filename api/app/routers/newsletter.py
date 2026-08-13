@@ -40,10 +40,11 @@ Sessao = Annotated[Session, Depends(get_sessao)]
 @router.post("/inscricoes", status_code=status.HTTP_201_CREATED)
 def inscrever(dados: InscricaoCriar, sessao: Sessao) -> InscricaoPublica:
     """Inscrição pública. Reinscrever um e-mail cancelado apenas o reativa."""
-    email = dados.email.strip().lower()
-    inscricao = sessao.scalar(select(InscricaoNewsletter).where(InscricaoNewsletter.email == email))
+    inscricao = sessao.scalar(
+        select(InscricaoNewsletter).where(InscricaoNewsletter.email == dados.email)
+    )
     if inscricao is None:
-        inscricao = InscricaoNewsletter(email=email, ativo=True)
+        inscricao = InscricaoNewsletter(email=dados.email, ativo=True)
         sessao.add(inscricao)
     else:
         inscricao.ativo = True
@@ -55,8 +56,9 @@ def inscrever(dados: InscricaoCriar, sessao: Sessao) -> InscricaoPublica:
 @router.post("/inscricoes/cancelar")
 def cancelar(dados: InscricaoCriar, sessao: Sessao) -> InscricaoPublica:
     """Cancelamento público (soft delete: `ativo=False`, histórico preservado)."""
-    email = dados.email.strip().lower()
-    inscricao = sessao.scalar(select(InscricaoNewsletter).where(InscricaoNewsletter.email == email))
+    inscricao = sessao.scalar(
+        select(InscricaoNewsletter).where(InscricaoNewsletter.email == dados.email)
+    )
     if inscricao is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "E-mail não inscrito")
     inscricao.ativo = False
