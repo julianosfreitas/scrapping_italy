@@ -36,6 +36,18 @@ def test_limpar_texto_remove_html_e_espacos() -> None:
     assert limpar_texto("<p></p>") is None
 
 
+def test_limpar_texto_decodifica_entidades_html() -> None:
+    """O Google News manda &nbsp; e &amp; no resumo; sem decodificar, vaza na tela."""
+    assert limpar_texto("Visto&nbsp;&nbsp;de estudo") == "Visto de estudo"
+    assert limpar_texto("Bolsas &amp; prazos") == "Bolsas & prazos"
+    assert limpar_texto("aspas &quot;duplas&quot;") == 'aspas "duplas"'
+
+
+def test_limpar_texto_nao_ressuscita_tag_escapada() -> None:
+    """`&lt;b&gt;` é texto literal, não marcação: precisa sobreviver à limpeza."""
+    assert limpar_texto("use &lt;b&gt; para negrito") == "use <b> para negrito"
+
+
 def test_normalizar_devolve_nova_noticia_sem_mutar_a_original() -> None:
     original = noticia(titulo=" <i>Visto</i> studio ", resumo="<p>Novas  regras</p>")
     normalizada = normalizar(original)

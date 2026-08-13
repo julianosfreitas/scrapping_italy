@@ -10,6 +10,7 @@ rodam inteiramente em memória.
 
 from __future__ import annotations
 
+import html
 import re
 from collections.abc import Mapping
 from dataclasses import replace
@@ -41,10 +42,16 @@ _TAMANHO_MAXIMO_RESUMO = 500
 
 
 def limpar_texto(texto: str | None) -> str | None:
-    """Remove tags HTML e colapsa espaços — comprehension-friendly, sem mutação."""
+    """Decodifica entidades, remove tags HTML e colapsa espaços — sem mutação.
+
+    A ordem importa: `unescape` ANTES de remover as tags faria `&lt;b&gt;`
+    virar uma tag de verdade e sumir. Primeiro tiram-se as tags, depois as
+    entidades viram texto (`&nbsp;` → espaço), e só então os espaços colapsam.
+    """
     if texto is None:
         return None
-    limpo = _ESPACOS.sub(" ", _TAGS_HTML.sub(" ", texto)).strip()
+    sem_tags = _TAGS_HTML.sub(" ", texto)
+    limpo = _ESPACOS.sub(" ", html.unescape(sem_tags).replace("\xa0", " ")).strip()
     return limpo[:_TAMANHO_MAXIMO_RESUMO] or None
 
 
