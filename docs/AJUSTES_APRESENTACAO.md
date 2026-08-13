@@ -1,305 +1,188 @@
-# Ajustes da apresentação — conformidade, layout e roteiro
+# Apresentação — o que foi feito e o que ainda depende de você
 
-Documento de trabalho sobre `PF-Python-Ponte-Italia.pdf` (53 slides).
-Objetivo: garantir os **3,0 pontos da apresentação** e preparar os **7,0
-pontos das perguntas**.
+Estado de `PF-Python-Ponte-Italia.pptx` (61 slides) e do PDF exportado.
 
-Tudo aqui foi medido no PDF entregue, não estimado. O script de verificação
-está em `docs/` e pode ser rodado de novo depois das correções.
+O deck foi **reconstruído por código** (`docs/gerar_slides.py`). O motivo é
+simples: os critérios de pontuação são objetivos, e definidos como constantes
+no gerador eles ficam garantidos por construção — não dependem de lembrar de
+ajustar 61 slides à mão. Dois verificadores conferem o resultado a cada
+regeração.
 
----
-
-## 1. Conformidade com os critérios de pontuação
-
-| Critério | Situação | Risco |
-|---|---|---|
-| Fonte ≥ 16pt no CORPO | ❌ **12 slides violam** | −1,0 |
-| Numeração no rodapé | ✅ presente nos 53 slides | — |
-| Slides de terceiros/IA identificados | ⚠️ **slide 53 está com placeholder** | −1,0 ou **zero** |
-| Contraste / legibilidade | ✅ com 2 ressalvas | −1,0 |
-| Duração 1h20 | ⚠️ sem plano de tempo | — |
-
-### 1.1 O problema mais grave: o slide 53 (créditos)
-
-Hoje o slide 53 diz:
-
-> `[n]` Reservado para slides gerados por IA: indicar a IA usada e o prompt
-> exato. *Ex.: [1] ChatGPT — "gerar diagrama de arquitetura em camadas".*
-
-Isso é um **texto de instrução, não uma atribuição**. Do jeito que está, a
-apresentação declara que existe conteúdo de IA e ao mesmo tempo não o
-identifica. Pela regra:
-
-- 1 slide não identificado → **−1,0**
-- mais de 1 slide não identificado → **nota final ZERO (plágio)**
-
-**Só você sabe quais slides foram gerados com auxílio de IA.** Percorra os 53
-e classifique cada um. Depois substitua o slide 53 por uma lista real. Se
-nenhum slide foi gerado por IA, remova o parágrafo do placeholder — deixá-lo
-lá levanta a dúvida sem necessidade.
-
-**Formato exigido, com exemplos preenchidos:**
-
-```
-FONTES
-
-[1]  Claude (Anthropic) — "gerar um slide comparando a versão funcional e a
-     versão imperativa do cálculo de gap, lado a lado, com código Python"
-[2]  ChatGPT (OpenAI) — "criar linha do tempo visual: cálculo-λ 1936, Lisp
-     1958, Haskell 1990, Python hoje"
-[3]  Slide 12 de https://www.exemplo.edu/curso/aula05.ppt
-
-Demais slides: autoria própria, a partir do código do projeto Ponte Italia
-(github.com/julianosfreitas/scrapping_italy).
+```bash
+python docs/gerar_slides.py                  # regenera o .pptx
+python docs/verificar_slides.py docs/PF-Python-Ponte-Italia.pptx
+python docs/verificar_layout.py              # estouro de caixa
 ```
 
-E no rodapé de CADA slide que usou aquele recurso, o número entre colchetes:
-`[1]`, ao lado da numeração que já existe.
+---
 
-> Recomendação honesta: prefira declarar a mais. Declarar uma ajuda de IA que
-> talvez nem precisasse de citação custa zero pontos; deixar de declarar duas
-> custa a nota inteira.
+## 1. Critérios de pontuação — situação
+
+| Critério | Antes | Agora |
+|---|---|---|
+| Fonte ≥ 16pt no CORPO | ❌ 12 slides violavam (menor: 12,0pt) | ✅ **mínimo 18pt em todo o deck** |
+| Numeração no rodapé | ✅ | ✅ nos 61 slides |
+| Origem identificada (IA) | ❌ placeholder no slide 53 | ✅ `[1]` no rodapé de todos + slide de fontes preenchido |
+| Contraste / legibilidade | ⚠️ 2 ressalvas | ✅ revisado |
+| Estouro de caixa | ❌ 3 slides com código vazando | ✅ 0 ocorrências |
+
+### Por que 18pt e não 16pt
+
+O mínimo exigido é 16. O deck anterior usava 16pt e o PDF saiu com **15,96pt**
+— a exportação aplica ~0,25% de escala. Medindo o PDF, ficava abaixo do
+mínimo por 0,04pt.
+
+Com 18pt, o PDF exportado agora mede **18,00pt**. Verificado no arquivo final,
+não presumido.
+
+### A sinalização de IA
+
+O rodapé de **todos os 61 slides** traz `[1]`, discreto, ao lado da assinatura.
+O último slide detalha no formato exigido:
+
+> **[1]** Claude (Anthropic) — prompt: "gerar apresentação acadêmica de 1h20
+> sobre Programação Funcional em Python, usando o projeto Ponte Italia como
+> estudo de caso, com slides de conceito, código e comparação imperativo ×
+> funcional".
+>
+> **[2]** Documentação oficial do Python — functools, itertools e dataclasses.
+> **[3]** PEP 8 — Guia de Estilo para Código Python.
+>
+> Código, capturas de tela e dados do projeto Ponte Italia são de autoria
+> própria.
+
+**Marcar todos os slides é deliberado.** A regra pune a não-declaração, nunca
+o uso de IA. Declarar a mais custa zero; declarar a menos em dois slides zera
+a apresentação. Se você reescrever slides do zero, pode remover o `[1]`
+daqueles — mas na dúvida, deixe.
+
+> ⚠️ **Confira o texto do prompt no slide 61.** Ele descreve o que foi pedido
+> aqui. Se você usou outro comando em outra ferramenta, ajuste para o que
+> digitou de fato — o enunciado pede o comando exato.
 
 ---
 
-## 2. Os 12 slides com fonte abaixo de 16pt
+## 2. O que mudou no conteúdo
 
-Medição direta dos operadores `Tf` do PDF. **Rodapé não conta** (9pt e
-11,04pt são o rodapé e estão liberados pela regra).
+**Correções factuais** — três slides prometiam o que já está pronto:
 
-| Slide | Tamanhos no corpo | Texto afetado | Correção |
-|---|---|---|---|
-| 1 | 14,04 | "Faculdade Nova Roma" | subir para 18 |
-| 5 | 15,0 | legendas dos dois cartões | subir para 18 |
-| 6 | 15,0 | descrições da linha do tempo | subir para 18 |
-| 11 | 15,0 / 15,02 | descrições dos 3 cartões | subir para 18 |
-| 32 | 15,0 | bullets de `lru_cache` | subir para 18 |
-| 36 | 15,0 / 15,02 | notas do `@cronometrar` | subir para 18 |
-| 37 | 15,0 | notas do `retry_backoff` | subir para 18 |
-| 40 | **12,96** | "Exemplo previsto · Sprint 4" | ver §3 — texto sai |
-| 42 | **12,96** / 15,0 | "Exemplo previsto · Sprint 6" | ver §3 — texto sai |
-| 44 | 14,04 / 15,0 | rótulos do diagrama de camadas | subir para 18 |
-| 45 | **12,0** / 15,0 | "(trecho condensado)" + bullets | subir para 18 |
-| 53 | 15,0 | texto do placeholder | reescrever (§1.1) |
-
-### 2.1 A armadilha do 15,96pt
-
-Existem **442 ocorrências de 15,96pt / 15,98pt** no deck. É o corpo padrão:
-foi escrito como 16pt e o PDF saiu com um fator de escala de ~0,25%, o que
-derrubou para 15,96.
-
-No PowerPoint a caixa mostra 16. Mas se o avaliador medir **no PDF**, lê
-15,96 — abaixo do mínimo. É um risco de 1,0 ponto por uma diferença de
-0,04pt.
-
-**Correção recomendada: adotar 18pt como corpo padrão de todo o deck.** Além
-de eliminar a ambiguidade com folga, 18pt projeta melhor numa sala.
-
-### 2.2 Escala tipográfica sugerida
-
-| Elemento | Hoje | Passar para |
-|---|---|---|
-| Título do slide | 34–40 | manter |
-| Sobretítulo (BLOCO 1 · PILARES) | 16 | 18 |
-| Corpo / bullets | 15,96 | **18** |
-| Legenda de cartão | 15,0 | **18** |
-| Código | 15,96–17 | **18 mono** |
-| Rodapé | 9 / 11 | manter (liberado) |
-
----
-
-## 3. Conteúdo desatualizado — os slides "previsto"
-
-Três slides prometem coisas que **já foram implementadas** desde então. Se um
-avaliador abrir o repositório, a divergência pesa contra.
-
-| Slide | Diz hoje | Realidade |
-|---|---|---|
-| 40 | "Exemplo previsto · Sprint 4 Radar" | Implementado: `iterar_itens_rss`, `paginar`, `janelas` |
-| 42 | "Exemplo previsto · Sprint 6 FAQ" | Implementado: `todas_perguntas`, `profundidade`, `caminho_ate` |
-| 46 | "Generators (previsto)" e "Recursão (previsto)" | Ambos ✅ implementados e testados |
-
-**Correção do slide 46** — a tabela "Cada conceito vive em código real" passa a:
-
-| Conceito | Onde |
+| Antes | Agora |
 |---|---|
-| Generators / lazy | `iterar_itens_rss`, `paginar`, `janelas` |
-| Recursão | `todas_perguntas`, `montar_arvore` (FAQ) |
-| reduce | `estatisticas`, `agrupar_por_topico` |
+| "Generators — exemplo previsto · Sprint 4" | `iterar_itens_rss`, `paginar`, `janelas` implementados |
+| "Recursão — exemplo previsto · Sprint 6" | `todas_perguntas`, `profundidade`, `caminho_ate` implementados |
+| Mapa com 2 conceitos "previstos" | **16/16 conceitos**, todos com arquivo e função |
 
-E vale acrescentar a linha que hoje não existe: **16/16 conceitos
-documentados** em `docs/RELATORIO_FP.md`.
+**Seis slides novos com o sistema rodando** (autoria própria, sem `[n]` extra):
 
----
-
-## 4. Defeitos de layout (código estourando a caixa)
-
-Três slides têm linha de código que vaza para fora do bloco escuro — fica
-visualmente quebrado e prejudica a leitura:
-
-| Slide | Onde quebra | Correção |
+| Slide | Conteúdo | Serve para |
 |---|---|---|
-| 10 | `total += x  # efeito colateral` — a palavra "colateral" cai fora | encurtar o comentário para `# efeito` |
-| 48 | `if doc.status == "ok": # status velho` — "velho" cai fora | trocar por `# status defasado` em linha própria |
-| 45 | bloco de `calcular_gap` muito cheio | cortar 2 linhas; o slide já diz "(trecho condensado)" |
+| 43 | Radar com 111 notícias | os generators alimentando o feed |
+| 46 | Aba Ajuda | a recursão renderizada na tela |
+| 48 | Home | mostrar que é sistema real |
+| 51 | Perfil com o gap em 33% | **o slide mais forte: da função pura à tela** |
+| 52 | E-mail da newsletter | `reduce` agrupando a edição |
+| — | Swagger (reserva) | evidência da API |
 
-Regra prática: **máximo de 52 caracteres por linha de código** num slide
-16:9 com fonte 18 mono. Prefira quebrar a linha a diminuir a fonte.
+**Três slides de dica pessoal**, com selo âmbar "DICA PESSOAL DE PYTHON" para
+o avaliador reconhecer que estão dentro da cota de 20 min:
 
----
-
-## 5. Contraste — duas ressalvas
-
-O esquema geral está correto: grafite `#1F2933` sobre off-white `#FAFAF7`
-(~14:1) e branco sobre navy `#16232B` (~15:1). Sem risco.
-
-Duas exceções a revisar:
-
-1. **Comentários dentro dos blocos de código.** O cinza usado nos comentários
-   (`# pura`, `# impura: depende de estado externo`) sobre o fundo navy fica
-   perto do limite de 4.5:1. Clarear o cinza dos comentários resolve.
-2. **Slide 49** usa laranja (`#B45309`) para os títulos dos quatro cartões
-   sobre fundo cinza-claro. Passa, mas é o par mais fraco do deck — se puder,
-   escurecer um tom.
+1. **Slide 16** — ruff + black + mypy no CI desde o dia 1.
+2. **Slide 34** — type hints como refatoração segura (o caso real do `reduce`).
+3. **Slide 54** — a armadilha do `import` por valor (bug real: a suíte de
+   testes escrevendo no Redis de verdade). É a melhor das três: tem sintoma,
+   causa e correção.
 
 ---
 
-## 6. Onde entram os prints do sistema
+## 3. Plano de tempo — 80 minutos
 
-12 capturas em `docs/screenshots/`, em 2880×1800 (retina), prontas para
-projeção. Sugestão de inserção — **todas de autoria própria, não precisam de
-`[n]`**:
-
-| Print | Slide sugerido | Por que ali |
-|---|---|---|
-| `03-perfil-cofre.png` | **após o 45** (`calcular_gap`) | mostra o resultado da função pura na tela: 33% pronto, ✓ atendido, ✗ faltando |
-| `06-radar.png` | após o 40 (generators) | o feed paginado que os generators alimentam |
-| `07-radar-filtro-vistos.png` | junto do anterior | o `filter` do pipeline em ação |
-| `09-newsletter-edicao.png` | após o slide de `reduce` | a edição agrupada nos 10 tópicos |
-| `10-ajuda.png` | após o 42 (recursão) | a árvore de categorias renderizada |
-| `11-ajuda-categoria.png` | junto do anterior | `caminho_ate` gerando a trilha |
-| `12-swagger.png` | no bloco do projeto | evidência de que a API é real |
-| `01-home.png` | slide 43 (abertura do bloco 9) | contexto do produto |
-| `02`, `04`, `05`, `08` | reserva | usar se sobrar tempo |
-
-**Slide novo que vale muito a pena** — logo depois do `03-perfil-cofre.png`:
-
-> **Título:** Da função pura à tela
-> **Corpo (18pt):** o mesmo `calcular_gap` que roda em 14 testes sem banco é o
-> que desenha esta barra de 33%. Entrada: 3 requisitos + 2 documentos. Saída:
-> um `Gap` congelado. Nenhuma consulta ao banco dentro da regra.
-
-É o slide que conecta teoria e prática — provavelmente o mais forte da
-apresentação.
-
----
-
-## 7. Plano de tempo — 1h20
-
-80 minutos. O deck tem 53 slides: ~1,5 min por slide na média, mas os slides
-de seção passam em segundos e os de código pedem mais.
+61 slides. Os de seção passam em segundos; os de código pedem mais.
 
 | Bloco | Slides | Tempo | Acumulado |
 |---|---|---|---|
-| Abertura + roteiro + objetivos | 1–3 | 4 min | 4 |
-| 1. O que é e por que importa | 4–8 | 7 min | 11 |
-| 2. Os pilares | 9–15 | 10 min | 21 |
-| 3. Funções como valores | 16–21 | 7 min | 28 |
-| 4. Ferramental (map/filter/comprehension) | 22–27 | 8 min | 36 |
-| 5. functools | 28–33 | 7 min | 43 |
-| 6. Closures e decoradores | 34–38 | 7 min | 50 |
-| 7. Avaliação preguiçosa | 39–41 | 5 min | 55 |
-| 8. Recursão | 42 | 4 min | 59 |
-| **9. Estudo de caso + prints** | 43–46 | **9 min** | 68 |
-| 10. PF × imperativo e limites | 47–50 | 7 min | 75 |
-| Fechamento + fontes | 51–53 | 5 min | **80** |
+| Abertura, roteiro e objetivos | 1–3 | 4 min | 4 |
+| 1 · O que é e por que importa | 4–8 | 7 min | 11 |
+| 2 · Os pilares | 9–15 | 10 min | 21 |
+| **Dica pessoal 1** | 16 | 3 min | 24 |
+| 3 · Funções como valores | 17–21 | 7 min | 31 |
+| 4 · Ferramental | 22–27 | 8 min | 39 |
+| 5 · functools | 28–33 | 7 min | 46 |
+| **Dica pessoal 2** | 34 | 3 min | 49 |
+| 6 · Closures e decoradores | 35–39 | 6 min | 55 |
+| 7 · Avaliação preguiçosa | 40–43 | 5 min | 60 |
+| 8 · Recursão | 44–46 | 4 min | 64 |
+| 9 · Estudo de caso | 47–53 | 8 min | 72 |
+| **Dica pessoal 3** | 54 | 3 min | 75 |
+| 10 · PF × imperativo e limites | 55–58 | 3 min | 78 |
+| Fechamento e fontes | 59–61 | 2 min | **80** |
 
-Margem: se atrasar, os blocos 3 e 4 aceitam corte de 2 min cada sem perda.
-
-### 7.1 Os 20 minutos de dicas pessoais
-
-O enunciado libera **até 20 min** para dicas de Python fora do tema. Duas
-formas de usar, e a segunda é melhor:
-
-- ❌ um bloco de 20 min no fim — o público já está saturado;
-- ✅ **pílulas de 2–3 min distribuídas**, cada uma com um slide próprio
-  marcado com um selo visual ("DICA PESSOAL"), para o avaliador reconhecer
-  que aquilo está dentro da cota permitida.
-
-Sugestões que combinam com o projeto e você viveu na prática:
-
-| Dica | Onde encaixa | Gancho real |
-|---|---|---|
-| `ruff` + `black` + `mypy` no CI desde o dia 1 | após o bloco 4 | os três rodam em todo PR do projeto |
-| Type hints salvam refatoração | bloco 5 | o `mypy --strict` pegou o erro do `reduce` com `MappingProxyType` |
-| Como testar sem mock | bloco 9 | 154 testes sem banco porque a regra é pura |
-| `pytest` com fixture de SQLite em memória | bloco 9 | `conftest.py` troca o MySQL por SQLite |
-| Armadilha do import por valor | bloco 6 | bug real: `from cache import get_redis` furou o monkeypatch e a suíte escreveu no Redis de produção |
-
-A última é ouro numa apresentação: é um bug **de verdade**, com causa,
-sintoma e correção — e ensina como o `import` funciona em Python.
+Dicas pessoais somam 9 min — bem dentro dos 20 permitidos. Se atrasar, os
+blocos 3 e 4 aceitam corte de 2 min cada.
 
 ---
 
-## 8. Preparação para as perguntas (7,0 pontos)
+## 4. Preparação para as perguntas (7,0 pontos)
 
-Vale mais que a apresentação inteira. 3 a 5 perguntas, até 40 min. As mais
-prováveis, dado o tema, com o rumo da resposta:
+Vale mais que a apresentação. 3 a 5 perguntas, até 40 min.
 
 **1. "Python é funcional?"**
-Não é puro — é multiparadigma. Não tem imutabilidade por padrão, não tem
-avaliação preguiçosa por padrão nem TCO. Mas tem funções de primeira classe,
-closures, `functools`, generators e comprehensions. A resposta madura é a do
-slide 8: use funcional onde calcula, imperativo nas bordas.
+Não é puro — é multiparadigma. Não tem imutabilidade por padrão, nem lazy por
+padrão, nem TCO. Mas tem funções de primeira classe, closures, `functools`,
+generators e comprehensions. A resposta madura é a do slide 8: funcional onde
+calcula, imperativo nas bordas.
 
-**2. "Qual a diferença entre função pura e transparência referencial?"**
-Pura = mesma entrada, mesma saída, sem efeitos. Transparência referencial =
-a chamada pode ser **substituída pelo seu resultado** sem mudar o programa.
-Toda função pura é referencialmente transparente. O exemplo do projeto:
+**2. "Diferença entre função pura e transparência referencial?"**
+Pura = mesma entrada, mesma saída, sem efeitos. Transparência referencial = a
+chamada pode ser **substituída pelo seu resultado** sem mudar o programa. Toda
+função pura é referencialmente transparente. Exemplo do projeto:
 `calcular_status` só ficou transparente quando o relógio virou parâmetro —
-antes ela lia `date.today()` por dentro e a mesma entrada dava saídas
-diferentes em dias diferentes. É por isso que `requisitos_por_categoria`
-pode ter `@lru_cache` com segurança.
+antes lia `date.today()` por dentro e a mesma entrada dava saídas diferentes
+em dias diferentes. É por isso que `requisitos_por_categoria` pode ter
+`@lru_cache` com segurança.
 
 **3. "Por que recursão se o Python não otimiza chamada de cauda?"**
 Porque a estrutura era recursiva (árvore do FAQ) e a profundidade é limitada
-pelo domínio: 3 níveis, contra um limite de ~1000 frames. Se a profundidade
-fosse arbitrária — um filesystem — a versão iterativa com pilha explícita
-seria a correta. Tem o teste que mede isso:
-`test_profundidade_fica_muito_abaixo_do_limite_do_python`.
+pelo domínio: 3 níveis contra ~1000 frames. Se fosse arbitrária — um
+filesystem — a versão iterativa com pilha explícita seria a correta. Existe o
+teste `test_profundidade_fica_muito_abaixo_do_limite_do_python`.
 
 **4. "`map`/`filter` ou comprehension?"**
-Comprehension quase sempre — é mais legível e idiomática (o próprio Guido
-preferia). `map`/`filter` ganham quando a função já existe e tem nome
-(`map(normalizar, brutas)` lê melhor que a comprehension equivalente) e
-quando você quer o iterador preguiçoso sem materializar.
+Comprehension quase sempre — mais legível e idiomática. `map`/`filter` ganham
+quando a função já existe e tem nome (`map(normalizar, brutas)`) e quando você
+quer o iterador preguiçoso sem materializar.
 
 **5. "Imutabilidade não desperdiça memória?"**
-Sim, pode. Recriar estrutura grande a cada passo custa. O contra-argumento
-é medir antes: no projeto os volumes são pequenos (dezenas de notícias,
-poucos requisitos) e a segurança compensou. Em volume grande, mutação local
-dentro de uma função que **continua pura por fora** é o meio-termo honesto.
+Sim, pode. Recriar estrutura grande a cada passo custa. O contra-argumento é
+medir antes: aqui os volumes são pequenos e a segurança compensou. Em volume
+grande, mutação local dentro de uma função que **continua pura por fora** é o
+meio-termo honesto.
 
 **6. "Onde a PF atrapalhou no seu projeto?"**
-Não caia na armadilha de dizer "em lugar nenhum". Respostas reais: o `reduce`
-que criava um dict novo a cada passo é O(n²) em memória para coleções
-grandes; e o `mypy --strict` obrigou a ligar o resultado do `reduce` a uma
-variável antes de envolvê-lo em `MappingProxyType`, porque a inferência
-dirigida por contexto quebrava.
+Não diga "em lugar nenhum". Respostas reais: o `reduce` que cria um dict novo
+a cada passo é O(n²) em memória para coleções grandes; e o `mypy --strict`
+obrigou a ligar o resultado do `reduce` a uma variável antes de embrulhá-lo em
+`MappingProxyType`, porque a inferência dirigida por contexto quebrava.
 
-> Dica de postura: para o que você não souber, "não sei, mas eu investigaria
-> assim…" vale mais que uma resposta inventada. O professor mede raciocínio.
+> Postura: para o que não souber, "não sei, mas eu investigaria assim…" vale
+> mais que resposta inventada. O professor mede raciocínio.
 
 ---
 
-## 9. Checklist final antes de apresentar
+## 5. O que ainda depende de você
 
-- [ ] Corpo em 18pt em todos os slides (rodar o script de verificação)
-- [ ] Slide 53 com as fontes REAIS preenchidas; `[n]` no rodapé dos slides correspondentes
-- [ ] Slides 40, 42 e 46: remover "previsto", já está implementado
-- [ ] Slides 10, 45 e 48: corrigir o código que vaza da caixa
-- [ ] Prints inseridos (§6) + o slide "Da função pura à tela"
-- [ ] Clarear os comentários dentro dos blocos de código
-- [ ] Ensaiar cronometrado uma vez — 80 min é mais curto do que parece
-- [ ] Levar o projeto rodando local como plano B para a demo (sem depender de rede)
-- [ ] `git log --format=full` conferido; repositório público e acessível
+- [ ] **Revisar o texto do prompt no slide 61** para bater com o que você
+      digitou de fato (§1).
+- [ ] Abrir o `.pptx` e passar o olho — os verificadores pegam fonte, rodapé e
+      estouro de caixa, mas não julgam gosto.
+- [ ] Ensaiar cronometrado uma vez. 80 min é mais curto do que parece.
+- [ ] Levar o projeto rodando local como plano B da demo (sem depender de rede).
+- [ ] Conferir que o repositório está público e acessível.
+
+### Observação técnica sobre o verificador
+
+`verificar_slides.py` lê os dois formatos. No `.pptx` a medição é exata (lê o
+atributo `sz` do XML). No `.pdf` ele mede o que um avaliador mediria, mas o
+texto do rodapé sai com subconjunto de fonte e não é decodificável — por isso
+a checagem da marca `[n]` no PDF reporta "não verificável" em vez de falhar.
+A conferência autoritativa é a do `.pptx`; o rodapé aparece corretamente em
+todos os slides renderizados.
