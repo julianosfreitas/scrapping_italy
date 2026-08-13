@@ -35,6 +35,10 @@ yarn-error.log*
 uploads/
 *.sqlite3
 
+# ── Material de terceiros (não redistribuir) ─────────────
+# slides do livro-texto: direitos reservados ao autor/editora
+docs/Brookshear_05.ppt
+
 # ── Editores / SO ────────────────────────────────────────
 .idea/
 .vscode/
