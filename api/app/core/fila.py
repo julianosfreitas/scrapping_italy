@@ -14,7 +14,10 @@ from typing import Any
 
 import redis
 
-from app.core.cache import get_redis
+# importado como MÓDULO de propósito: `from ... import get_redis` congelaria a
+# referência no import e o override dos testes (que troca cache.get_redis)
+# não teria efeito aqui — a fila acabaria falando com o Redis de verdade.
+from app.core import cache
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +26,7 @@ FILA_NEWSLETTER = "newsletter:fila"
 
 def publicar_edicao(payload: Any) -> bool:
     """Enfileira a edição para o worker. Devolve False se o Redis não respondeu."""
-    cliente = get_redis()
+    cliente = cache.get_redis()
     if cliente is None:
         logger.warning("Redis indisponível — edição não enfileirada")
         return False
@@ -37,7 +40,7 @@ def publicar_edicao(payload: Any) -> bool:
 
 def tamanho_fila() -> int:
     """Quantas edições aguardam o worker (usado no smoke test da demo)."""
-    cliente = get_redis()
+    cliente = cache.get_redis()
     if cliente is None:
         return 0
     try:
