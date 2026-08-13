@@ -15,6 +15,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+# `traducao` entra como MÓDULO: `from ... import traduzir` congelaria a
+# referência e o override dos testes não pegaria — a suíte sairia traduzindo
+# pela rede de verdade
+from app.core import traducao
 from app.core.db import get_sessao
 from app.core.fila import publicar_edicao
 from app.core.seguranca import exigir_auth
@@ -27,7 +31,13 @@ from app.schemas.newsletter import (
     ItemEdicao,
     TopicoEdicao,
 )
-from app.services.curadoria import JANELA_HORAS, Edicao, NoticiaResumo, curar
+from app.services.curadoria import (
+    JANELA_HORAS,
+    Edicao,
+    NoticiaResumo,
+    curar,
+    resumir,
+)
 
 router = APIRouter(prefix="/api/newsletter", tags=["newsletter"])
 
@@ -84,7 +94,13 @@ def _para_resumo(noticia: Noticia) -> NoticiaResumo:
 
 
 def _para_schema(edicao: Edicao, data_referencia: date) -> EdicaoPublica:
-    """Edição (dataclass pura) → schema Pydantic serializável para a fila."""
+    """Edição (dataclass pura) → schema Pydantic serializável para a fila.
+
+    É aqui que o texto vira português: `resumir` (puro) corta o resumo da
+    fonte nas primeiras frases e `traduzir` (I/O) o verte para pt. A ordem
+    importa — resumir ANTES de traduzir manda menos texto para o serviço
+    externo, o que deixa a curadoria mais rápida e mais barata.
+    """
     return EdicaoPublica(
         data=data_referencia,
         gerada_em=edicao.data_referencia,
@@ -95,10 +111,10 @@ def _para_schema(edicao: Edicao, data_referencia: date) -> EdicaoPublica:
                 rotulo=topico.rotulo,
                 itens=tuple(
                     ItemEdicao(
-                        titulo=item.titulo,
+                        titulo=traducao.traduzir(item.titulo),
                         url=item.url,
                         fonte=item.fonte,
-                        resumo=item.resumo,
+                        resumo=traducao.traduzir_opcional(resumir(item.resumo)),
                         publicada_em=item.publicada_em,
                     )
                     for item in topico.itens

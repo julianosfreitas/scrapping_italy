@@ -11,6 +11,7 @@ dependencies = [
     "alembic>=1.13",
     "pydantic>=2.12",
     "httpx>=0.27",
+    "deep-translator>=1.11",
     "pymysql>=1.1",
     "cryptography>=43.0",
     "bcrypt>=4.2",
@@ -54,6 +55,10 @@ packages = ["app"]
 
 [[tool.mypy.overrides]]
 module = "alembic.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "deep_translator.*"
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

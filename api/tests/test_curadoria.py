@@ -15,6 +15,7 @@ from app.services.curadoria import (
     curar,
     nas_ultimas_horas,
     ranquear,
+    resumir,
 )
 
 AGORA = datetime(2026, 8, 13, 8, 30)
@@ -68,6 +69,47 @@ def test_janela_e_configuravel() -> None:
     antiga = noticia("Três dias atrás", horas_atras=72)
     assert nas_ultimas_horas((antiga,), AGORA) == ()
     assert nas_ultimas_horas((antiga,), AGORA, janela_horas=96) == (antiga,)
+
+
+# ── resumo extrativo (função pura) ───────────────────────
+
+
+def test_resumo_mantem_as_duas_primeiras_frases() -> None:
+    texto = "Primeira frase. Segunda frase. Terceira frase que sobra."
+    assert resumir(texto) == "Primeira frase. Segunda frase."
+
+
+def test_resumo_de_frase_unica_fica_inteiro() -> None:
+    assert resumir("Bando aberto até setembro.") == "Bando aberto até setembro."
+
+
+def test_resumo_nao_corta_em_abreviacao() -> None:
+    """'art. 5' não é fim de frase — o corte cairia no lugar errado."""
+    texto = "Vedi art. 5 del bando. Le domande chiudono in agosto. E mais uma."
+    assert resumir(texto) == "Vedi art. 5 del bando. Le domande chiudono in agosto."
+
+
+def test_resumo_longo_corta_em_palavra_inteira() -> None:
+    texto = "palavra " * 100
+    resultado = resumir(texto)
+    assert resultado is not None
+    assert len(resultado) <= 321
+    assert resultado.endswith("…")
+    assert "palavr…" not in resultado  # não corta no meio da palavra
+
+
+def test_resumo_normaliza_espacos_e_quebras() -> None:
+    assert resumir("  Uma   frase\n\ncom espaços.  ") == "Uma frase com espaços."
+
+
+def test_resumo_de_vazio_ou_none_e_none() -> None:
+    assert resumir(None) is None
+    assert resumir("   ") is None
+
+
+def test_resumo_e_deterministico() -> None:
+    texto = "Uma frase. Outra frase. Terceira."
+    assert resumir(texto) == resumir(texto)
 
 
 # ── ranking ──────────────────────────────────────────────

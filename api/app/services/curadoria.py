@@ -15,6 +15,7 @@ coleção nos tópicos da seção 7 — sem reclassificar nada.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -37,6 +38,13 @@ TOPICOS: tuple[tuple[str, str], ...] = (
 
 JANELA_HORAS = 24
 MAXIMO_POR_TOPICO = 5
+FRASES_NO_RESUMO = 2
+TAMANHO_MAXIMO_RESUMO = 320
+
+# fim de frase: ponto, interrogação ou exclamação seguidos de espaço/fim
+_FIM_DE_FRASE = re.compile(r"(?<=[.!?])\s+")
+# abreviações comuns que NÃO terminam frase (evita corte no meio)
+_ABREVIACOES = ("art.", "n.", "ecc.", "etc.", "sr.", "dr.", "prof.", "p.ex.")
 
 
 @dataclass(frozen=True)
@@ -82,6 +90,41 @@ def nas_ultimas_horas(
     """`filter` com o relógio INJETADO — nada de datetime.now() aqui dentro."""
     corte = agora - timedelta(hours=janela_horas)
     return tuple(filter(lambda n: corte <= momento_de(n) <= agora, noticias))
+
+
+def resumir(
+    texto: str | None,
+    frases: int = FRASES_NO_RESUMO,
+    maximo: int = TAMANHO_MAXIMO_RESUMO,
+) -> str | None:
+    """Reduz o resumo da fonte às primeiras `frases` frases — função PURA.
+
+    Extrativo, não abstrativo: corta no fim de frase em vez de truncar no
+    meio de uma palavra. Abreviações comuns (art., n., ecc.) não contam como
+    fim de frase, senão o corte cairia no lugar errado.
+
+    Se ainda assim passar de `maximo`, corta na última palavra inteira e
+    marca com reticências — nunca deixa a frase pela metade.
+    """
+    if texto is None:
+        return None
+    limpo = " ".join(texto.split())
+    if not limpo:
+        return None
+
+    partes: list[str] = []
+    for pedaco in _FIM_DE_FRASE.split(limpo):
+        if partes and partes[-1].lower().endswith(_ABREVIACOES):
+            partes[-1] = f"{partes[-1]} {pedaco}"  # a anterior não tinha acabado
+        else:
+            partes.append(pedaco)
+        if len(partes) >= frases:
+            break
+
+    resumo = " ".join(partes).strip()
+    if len(resumo) <= maximo:
+        return resumo or None
+    return resumo[:maximo].rsplit(" ", 1)[0].rstrip(",;:.") + "…"
 
 
 def ranquear(noticias: tuple[NoticiaResumo, ...]) -> tuple[NoticiaResumo, ...]:

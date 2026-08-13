@@ -50,6 +50,14 @@ def cliente(
     modulo_cache.get_redis.cache_clear()
     monkeypatch.setattr(modulo_cache, "get_redis", lambda: None)
 
+    # a tradução é serviço externo: nos testes vira identidade, para a suíte
+    # não depender de rede nem ficar lenta
+    from app.core import traducao as modulo_traducao
+
+    modulo_traducao.traduzir.cache_clear()
+    monkeypatch.setattr(modulo_traducao, "traduzir", lambda texto, destino="pt": texto)
+    monkeypatch.setattr(modulo_traducao, "traduzir_opcional", lambda texto, destino="pt": texto)
+
     def _sessao_de_teste() -> Iterator[Session]:
         with sessao_teste() as sessao:
             yield sessao
