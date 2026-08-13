@@ -21,5 +21,7 @@
   <ItemGroup>
     <!-- o template acompanha o binário: o renderizador o lê de AppContext.BaseDirectory -->
     <Content Include="Templates\**\*.cshtml" CopyToOutputDirectory="PreserveNewest" />
+    <!-- logo embutido no e-mail como recurso vinculado (cid:) -->
+    <Content Include="Recursos\**\*.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

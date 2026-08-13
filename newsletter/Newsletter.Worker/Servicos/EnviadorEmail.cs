@@ -8,6 +8,9 @@ namespace Newsletter.Worker.Servicos;
 
 public interface IEnviadorEmail
 {
+    /// <summary>Content-ID do logo embutido; o template o referencia por `cid:`.</summary>
+    const string ContentIdLogo = "logo-ponte-italia";
+
     Task EnviarAsync(
         IReadOnlyCollection<string> destinatarios,
         string assunto,
@@ -49,13 +52,23 @@ public sealed class EnviadorMailKit(
             await cliente.AuthenticateAsync(_opcoes.SmtpUsuario, _opcoes.SmtpSenha, cancelamento);
         }
 
+        var logo = Path.Combine(AppContext.BaseDirectory, "Recursos", "logo-marca.png");
+
         // uma mensagem por inscrito: cada um em Bcc vazaria a lista de e-mails
         foreach (var destinatario in destinatarios)
         {
+            var corpo = new BodyBuilder { HtmlBody = html };
+            if (File.Exists(logo))
+            {
+                // recurso vinculado (cid:) — o Gmail bloqueia imagem em data: URI
+                var recurso = corpo.LinkedResources.Add(logo);
+                recurso.ContentId = IEnviadorEmail.ContentIdLogo;
+            }
+
             var mensagem = new MimeMessage
             {
                 Subject = assunto,
-                Body = new BodyBuilder { HtmlBody = html }.ToMessageBody(),
+                Body = corpo.ToMessageBody(),
             };
             mensagem.From.Add(new MailboxAddress(_opcoes.NomeRemetente, _opcoes.Remetente));
             mensagem.To.Add(MailboxAddress.Parse(destinatario));
