@@ -19,7 +19,7 @@
 | 5 | Transparência referencial | ✅ implementado | `calcular_status` (relógio injetado) + justificativa do cache em `requisitos_por_categoria` (entrada 12) |
 | 6 | lambda | ✅ implementado | `sorted(key=lambda ...)` em `ordenar_por_prazo` (`api/app/services/cursos.py`) |
 | 7 | map / filter | ✅ implementado | `processar` e `filtrar_por_categoria` em `scraper/pipeline.py` |
-| 8 | functools.reduce | ✅ implementado | `estatisticas` em `scraper/pipeline.py` (score de prontidão já coberto pelo percentual do Gap) |
+| 8 | functools.reduce | ✅ implementado | `estatisticas` em `scraper/pipeline.py` + `agrupar_por_topico` em `api/app/services/curadoria.py` (entrada 8b) |
 | 9 | Comprehensions | ✅ implementado | normalização de scraping: `parse_rss`, `parse_noticias_html`, `parse_universidades` (`scraper/sources/base.py`) |
 | 10 | Generators / lazy | ✅ implementado | `iterar_itens_rss` (`scraper/sources/base.py`) + `paginar`/`janelas` (`api/app/services/feed.py`) |
 | 11 | functools.partial | ✅ implementado | `parser_universitaly` em `scraper/sources/universitaly.py` |
@@ -515,6 +515,58 @@ impossível se a função materializasse a entrada. Outro teste instrumentado
 prova que, pedida a página 1 de 3 itens, exatamente 3 itens são produzidos
 de um gerador de 999. `janelas()` complementa: um gerador de páginas
 consecutivas que a newsletter (Sprint 5) consumirá lote a lote.
+
+---
+
+### 8b. `functools.reduce` — agrupamento da edição nos 10 tópicos
+
+**Onde:** `api/app/services/curadoria.py` → `agrupar_por_topico()`
+**Sprint:** 5 · **Commit:** `ffae1e1`
+
+```python
+def _acumular_topico(
+    acc: dict[str, tuple[NoticiaResumo, ...]], noticia: NoticiaResumo
+) -> dict[str, tuple[NoticiaResumo, ...]]:
+    """Um passo do reduce: NOVO mapa com a notícia anexada ao seu tópico."""
+    return {**acc, noticia.categoria: (*acc.get(noticia.categoria, ()), noticia)}
+
+
+def agrupar_por_topico(noticias):
+    vazio: dict[str, tuple[NoticiaResumo, ...]] = {}
+    agrupado = reduce(_acumular_topico, noticias, vazio)
+    return MappingProxyType(agrupado)
+```
+
+**Por que funcional ajudou:** é o mesmo idioma de `estatisticas` (entrada 8),
+mas acumulando TUPLAS em vez de contadores — a prova de que `reduce` é uma
+ferramenta de dobra genérica, não um truque de somatório. Três propriedades
+caem de graça: (a) o acumulador nunca é mutado, cada passo devolve um dict
+novo, então não existe o clássico bug de dicionário compartilhado entre
+chamadas; (b) como a entrada já vem ordenada por `ranquear` e o `reduce`
+preserva a ordem de iteração, **cada tópico herda o ranking sem uma segunda
+ordenação**; (c) a saída sai embrulhada em `MappingProxyType`, imutável para
+quem recebe. Com a curadoria inteira pura (`curar` = janela → ranking →
+agrupamento), os 15 testes de `test_curadoria.py` rodam sem banco, sem Redis
+e sem congelar o relógio — o horário entra por parâmetro.
+
+**Equivalente imperativo:**
+
+```python
+# a versão com estado mutável: precisa checar a chave a cada item, e quem
+# recebe o dicionário pode alterá-lo sem que a curadoria perceba
+agrupado = {}
+for noticia in noticias:
+    if noticia.categoria not in agrupado:
+        agrupado[noticia.categoria] = []
+    agrupado[noticia.categoria].append(noticia)   # muta a lista compartilhada
+```
+
+**Nota de composição (conceito 4):** `curar` não implementa nada — só compõe
+`nas_ultimas_horas` → `ranquear` → `agrupar_por_topico`, e a comprehension
+final descarta tópicos vazios e corta cada um em `maximo_por_topico`. O
+classificador de categorias é o da Sprint 4 (`scraper.pipeline.classificar`),
+então a newsletter agrupa pelo que o pipeline do Radar já decidiu — nenhuma
+regra de classificação duplicada entre os dois módulos.
 
 ---
 
