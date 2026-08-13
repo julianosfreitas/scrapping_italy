@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block titulo %}Ajuda — Ponte Italia{% endblock %}
+
+{% macro menu_categoria(item, nivel) %}
+<li>
+  <a href="/ajuda?categoria={{ item.id }}{% if consulta %}&q={{ consulta }}{% endif %}"
+     style="padding-left: {{ nivel * 0.9 }}rem"
+     class="flex items-center justify-between gap-2 rounded-lg py-1.5 pr-2 text-sm
+            hover:text-verde focus:outline-none focus:ring-2 focus:ring-verde
+            {{ 'font-bold text-verde' if item.id == categoria_ativa else 'text-gray-600' }}">
+    <span>{{ item.nome }}</span>
+    <span class="shrink-0 text-xs font-semibold text-gray-400">{{ item.total_perguntas }}</span>
+  </a>
+  {% if item.subcategorias %}
+  <ul>
+    {% for sub in item.subcategorias %}{{ menu_categoria(sub, nivel + 1) }}{% endfor %}
+  </ul>
+  {% endif %}
+</li>
+{% endmacro %}
+
+{% block conteudo %}
+<h1 class="text-3xl font-extrabold tracking-tight">Ajuda</h1>
+<p class="mt-2 text-gray-600 max-w-2xl">
+  As dúvidas que mais aparecem no processo rumo à Itália, organizadas por tema
+  e com a fonte oficial de cada resposta.
+</p>
+
+<form method="get" action="/ajuda" role="search" class="mt-6 flex flex-wrap gap-3">
+  <label class="sr-only" for="q">Buscar no FAQ</label>
+  <input id="q" name="q" type="search" value="{{ consulta }}"
+         placeholder="visto, tradução, bolsa, ISEE…"
+         class="flex-1 min-w-[16rem] rounded-xl border border-gray-200 px-4 py-2.5 text-sm
+                focus:outline-none focus:ring-2 focus:ring-verde focus:border-verde">
+  {% if categoria_ativa %}<input type="hidden" name="categoria" value="{{ categoria_ativa }}">{% endif %}
+  <button class="rounded-xl bg-verde px-5 py-2.5 text-sm font-bold text-white
+                 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-verde
+                 focus:ring-offset-2 transition-opacity">Buscar</button>
+  {% if consulta or categoria_ativa %}
+  <a href="/ajuda" class="rounded-xl border border-gray-200 px-5 py-2.5 text-sm font-semibold
+                          text-gray-600 hover:border-verde/40 focus:outline-none
+                          focus:ring-2 focus:ring-verde">Limpar</a>
+  {% endif %}
+</form>
+
+<div class="mt-8 grid gap-8 md:grid-cols-[16rem_1fr]">
+  <nav aria-label="Categorias do FAQ"
+       class="rounded-2xl bg-white border border-gray-100 p-5 shadow-sm h-fit">
+    <h2 class="text-xs font-bold uppercase tracking-wide text-gray-500">Categorias</h2>
+    <ul class="mt-3 space-y-0.5">
+      <li>
+        <a href="/ajuda{% if consulta %}?q={{ consulta }}{% endif %}"
+           class="block rounded-lg py-1.5 text-sm hover:text-verde focus:outline-none
+                  focus:ring-2 focus:ring-verde
+                  {{ 'text-gray-600' if categoria_ativa else 'font-bold text-verde' }}">
+          Todas
+        </a>
+      </li>
+      {% for raiz in arvore %}{{ menu_categoria(raiz, 0) }}{% endfor %}
+    </ul>
+  </nav>
+
+  <section>
+    {% if trilha %}
+    <nav aria-label="Trilha" class="mb-4 text-sm font-semibold text-gray-500">
+      {% for passo in trilha %}
+        {%- if not loop.first %} <span aria-hidden="true">›</span> {% endif -%}
+        <a href="/ajuda?categoria={{ passo.id }}"
+           class="hover:text-verde focus:outline-none focus:ring-2 focus:ring-verde rounded">
+          {{ passo.nome }}</a>
+      {%- endfor %}
+    </nav>
+    {% endif %}
+
+    <p class="text-sm text-gray-500">
+      {{ perguntas | length }} pergunta(s)
+      {%- if consulta %} para "{{ consulta }}"{% endif %}.
+    </p>
+
+    <div class="mt-4 space-y-3">
+      {% for p in perguntas %}
+      <details class="group rounded-2xl bg-white border border-gray-100 p-5 shadow-sm
+                      open:border-verde/40 transition-colors">
+        <summary class="cursor-pointer font-bold leading-snug list-none flex gap-3
+                        focus:outline-none focus:ring-2 focus:ring-verde rounded">
+          <span aria-hidden="true" class="text-verde transition-transform group-open:rotate-90">›</span>
+          <span>{{ p.pergunta }}</span>
+        </summary>
+        <div class="mt-3 pl-6 text-sm text-gray-600 leading-relaxed">
+          <p>{{ p.resposta }}</p>
+          {% if p.fontes %}
+          <p class="mt-3 flex flex-wrap gap-2">
+            {% for fonte in p.fontes %}
+            <a href="{{ fonte }}" target="_blank" rel="noopener"
+               class="rounded-full bg-verde-claro text-verde px-3 py-1 text-xs font-semibold
+                      hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-verde">
+              fonte oficial ↗
+            </a>
+            {% endfor %}
+          </p>
+          {% endif %}
+        </div>
+      </details>
+      {% else %}
+      <p class="rounded-2xl bg-white border border-gray-100 p-6 text-gray-500">
+        Nada encontrado{% if consulta %} para "{{ consulta }}"{% endif %}.
+        Tente outro termo ou navegue pelas categorias.
+      </p>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}

@@ -18,11 +18,15 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.db import get_sessao
 from app.models import Curso, EdicaoNewsletter, Estudante, Noticia, Universidade
+from app.routers.faq import _para_schema as _faq_publica
+from app.routers.faq import carregar_arvore
 from app.routers.newsletter import listar_edicoes
 from app.routers.noticias import montar_feed
 from app.routers.universidades import _curso_publico
 from app.schemas.newsletter import EdicaoPublica
 from app.services.cursos import ordenar_por_prazo
+from app.services.faq import Categoria as CategoriaFaq
+from app.services.faq import buscar, caminho_ate
 from app.services.feed import TAMANHO_PAGINA_PADRAO
 
 ROTULOS_CATEGORIAS = {
@@ -115,6 +119,36 @@ def newsletter_edicao(request: Request, data_edicao: date, sessao: Sessao) -> HT
         {
             "edicao": EdicaoPublica.model_validate(arquivada.conteudo),
             "enviada_em": arquivada.enviada_em,
+        },
+    )
+
+
+@router.get("/ajuda", response_class=HTMLResponse)
+def ajuda(
+    request: Request,
+    sessao: Sessao,
+    q: str = "",
+    categoria: int | None = None,
+) -> HTMLResponse:
+    """FAQ: árvore recursiva no menu + busca na subárvore escolhida."""
+    arvore = carregar_arvore(sessao)
+    trilha: tuple[CategoriaFaq, ...] = ()
+    if categoria is not None:
+        trilha = next((caminho for raiz in arvore if (caminho := caminho_ate(raiz, categoria))), ())
+        if not trilha:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Categoria não encontrada")
+
+    escopo = (trilha[-1],) if trilha else arvore
+    perguntas = tuple(p for alvo in escopo for p in buscar(alvo, q))
+    return templates.TemplateResponse(
+        request,
+        "ajuda.html",
+        {
+            "arvore": [_faq_publica(raiz) for raiz in arvore],
+            "perguntas": perguntas,
+            "consulta": q,
+            "categoria_ativa": categoria,
+            "trilha": trilha,
         },
     )
 
