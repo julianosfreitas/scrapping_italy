@@ -61,3 +61,25 @@ jobs:
 
       - name: PyTest
         run: pytest scraper/tests
+
+  newsletter:
+    name: Newsletter — build e testes (.NET)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: newsletter
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Testes (xUnit)
+        run: dotnet test --no-build --configuration Release --verbosity normal

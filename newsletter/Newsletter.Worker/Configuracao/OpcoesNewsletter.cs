@@ -31,4 +31,11 @@ public sealed class OpcoesNewsletter
     public string Cron { get; set; } = "0 0 9 * * ?";
 
     public string FusoHorario { get; set; } = "America/Recife";
+
+    /// <summary>
+    /// Drena a fila uma vez logo na subida, além do cron — mesmo comportamento
+    /// do scraper ("primeira execução imediata"). Usado na demo e em operação
+    /// manual; em produção fica desligado.
+    /// </summary>
+    public bool DispararAoIniciar { get; set; }
 }

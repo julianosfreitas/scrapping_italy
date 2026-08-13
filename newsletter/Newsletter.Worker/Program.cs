@@ -29,6 +29,8 @@ builder.Services
         opcoes.ApiUrl = ambiente["PONTE_API"] ?? opcoes.ApiUrl;
         opcoes.ApiEmail = ambiente["PONTE_EMAIL"] ?? opcoes.ApiEmail;
         opcoes.ApiSenha = ambiente["PONTE_SENHA"] ?? opcoes.ApiSenha;
+        opcoes.DispararAoIniciar =
+            bool.TryParse(ambiente["NEWSLETTER_DISPARAR_AO_INICIAR"], out var agora) && agora;
     });
 
 builder.Services.AddSingleton<IConnectionMultiplexer>(provedor =>
@@ -60,6 +62,15 @@ builder.Services.AddQuartz(quartz =>
         .WithCronSchedule(
             opcoes.Cron,
             cron => cron.InTimeZone(TimeZoneInfo.FindSystemTimeZoneById(opcoes.FusoHorario))));
+
+    if (bool.TryParse(builder.Configuration["NEWSLETTER_DISPARAR_AO_INICIAR"], out var agora)
+        && agora)
+    {
+        quartz.AddTrigger(gatilho => gatilho
+            .ForJob(chave)
+            .WithIdentity("disparo-newsletter-imediato")
+            .StartNow());
+    }
 });
 builder.Services.AddQuartzHostedService(quartz => quartz.WaitForJobsToComplete = true);
 
