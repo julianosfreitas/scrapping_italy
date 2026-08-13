@@ -3,8 +3,18 @@
 > Plataforma web que centraliza a jornada de estudantes brasileiros rumo a graduação e mestrado na **Itália** (e Europa em geral): perfil com documentação, descoberta de universidades, comparativo de requisitos, radar de notícias via web scraping e newsletter diária automática.
 
 **Repositório:** `github.com/julianosfreitas/scrapping_italy`
-**Stack principal:** Python (FastAPI) · C#/.NET (serviço de newsletter) · MySQL · Redis · Docker
+**Stack principal:** Python (FastAPI) · C#/.NET 8 (worker de newsletter) · MySQL · Redis · Docker
 **Estilo de código:** Programação Funcional em Python (funções puras, imutabilidade, HOFs, `functools`, generators) — o projeto é também material prático da apresentação acadêmica de Paradigmas.
+
+### Estado atual
+
+| | |
+|---|---|
+| Roadmap | **6 de 6 sprints concluídas** (seção 10) |
+| Testes | **215** — 161 na API · 36 no scraper · 18 no worker .NET |
+| Qualidade | `ruff` + `black` + `mypy --strict` limpos; CI em todo push |
+| Migrations | 6, todas via Alembic |
+| Conceitos de PF | **16 de 16** documentados em [`docs/RELATORIO_FP.md`](docs/RELATORIO_FP.md) |
 
 ---
 
@@ -16,8 +26,8 @@ A plataforma responde a isso com quatro promessas:
 
 1. **Um perfil, toda a documentação** — cada estudante sobe passaporte, visto, histórico, certificados de idioma etc. uma única vez.
 2. **Comparativo automático** — ao adicionar uma universidade de interesse, o sistema cruza os documentos exigidos com os que o estudante já tem no perfil e mostra o *gap* (o que falta, o que vence, o que está ok).
-3. **Radar de oportunidades e notícias** — scraping + APIs de fontes sobre estudo na Itália/Europa (bolsas, prazos, mudanças de visto, mercado para estudantes estrangeiros).
-4. **Newsletter diária** — e-mail automático toda manhã (09h) com os 10 tópicos essenciais do dia para quem está no processo.
+3. **Radar de oportunidades e notícias** — scraping + RSS de fontes sobre estudo na Itália/Europa (bolsas, prazos, mudanças de visto).
+4. **Newsletter diária** — e-mail automático toda manhã (09h) com os tópicos essenciais do dia, **traduzidos para português**.
 
 ### Usuários iniciais (seed)
 
@@ -32,94 +42,108 @@ O cadastro é aberto: novos estudantes podem ser adicionados pela própria plata
 
 ## 2. Mapa do site (páginas / abas)
 
-1. **Home (landing page)** — o que é a plataforma, o problema que resolve, CTA "Criar meu perfil".
-2. **Estudantes** — grid com os perfis; página individual de cada estudante.
-   - Dados pessoais, foto, bio, área de estudo, nível de italiano/inglês.
-   - **Cofre de documentos**: upload categorizado (identidade, acadêmico, financeiro, idioma, visto), com data de validade e status.
-   - **Minhas universidades**: instituições salvas + comparativo documentação exigida × documentação no perfil + prazos.
-3. **Universidades** — busca/exploração de universidades e cursos na Itália e Europa (dados via API + scraping), com requisitos, prazos, custos e tempo de preparação estimado; botão "adicionar ao meu perfil" (gera alerta).
-4. **Radar (notícias)** — feed agregado por scraping/APIs: notícias de vistos, bolsas, mercado internacional para estudantes estrangeiros, separadas por categoria.
-5. **Newsletter** — página de inscrição + arquivo das edições enviadas.
-6. **Ajuda (FAQ)** — perguntas e soluções mais recorrentes do processo (montadas a partir de varredura na web + curadoria), buscáveis e por categoria.
+1. **Home** (`/`) — o que é a plataforma, o problema que resolve, CTA "Criar meu perfil".
+2. **Estudantes** (`/estudantes`) — grid com os perfis; página individual de cada estudante.
+   - Dados pessoais, bio, área de estudo, nível de italiano/inglês.
+   - **Cofre de documentos**: upload categorizado (identidade, acadêmico, financeiro, idioma, visto), com data de validade e status derivado.
+   - **Minhas universidades**: instituições salvas + comparativo documentação exigida × documentação no perfil + alerta de prazo.
+3. **Universidades** (`/universidades`) — busca de universidades e cursos, com requisitos, prazos e custos; botão "adicionar ao meu perfil".
+4. **Radar** (`/radar`) — feed agregado por scraping/RSS, com filtros por categoria e fonte e paginação server-side.
+5. **Newsletter** (`/newsletter`) — página de inscrição + arquivo das edições (`/newsletter/{data}`).
+6. **Ajuda** (`/ajuda`) — FAQ com categorias aninhadas (árvore percorrida por recursão) e busca sem acento.
+
+Documentação da API em `/docs` (Swagger, gerado pelo FastAPI).
 
 ---
 
 ## 3. Arquitetura
 
 ```
-                         ┌────────────────────────────┐
-                         │   Front-end (SPA leve)     │
-                         │   HTML + Tailwind + JS     │
-                         │   (ou React/Vite, fase 2)  │
-                         └────────────┬───────────────┘
-                                      │ REST/JSON
-                    ┌─────────────────▼──────────────────┐
-                    │        API core — Python           │
-                    │        FastAPI (estilo funcional)  │
-                    │  auth · estudantes · documentos    │
-                    │  universidades · comparativo · FAQ │
-                    └───────┬───────────────┬────────────┘
-                            │               │
-                 ┌──────────▼───┐     ┌─────▼──────┐
-                 │   MySQL 8.0  │     │   Redis    │
-                 │ (dados)      │     │ cache/fila │
-                 └──────────────┘     └─────┬──────┘
-                                            │
-        ┌───────────────────────┐   ┌───────▼──────────────────┐
-        │  Scraper — Python     │   │  Newsletter — C#/.NET 8  │
-        │  httpx + BeautifulSoup│   │  Worker Service          │
-        │  + Playwright (JS)    │   │  Quartz.NET (cron 09h)   │
-        │  APScheduler (cron)   │   │  MailKit/SendGrid        │
-        └───────────────────────┘   └──────────────────────────┘
+                    Caddy (HTTPS automático, :80/:443)
+                                  │
+                    ┌─────────────▼──────────────┐
+                    │   api — FastAPI (:8000)    │
+                    │   Jinja2 + Tailwind        │
+                    │   REST /api/*              │
+                    └──┬──────────────────────┬──┘
+                       │                      │
+              ┌────────▼────────┐    ┌────────▼────────┐
+              │   MySQL 8.0     │    │     Redis 7     │
+              │  dados          │    │ cache + fila    │
+              └─────────────────┘    └────────┬────────┘
+                       ▲                      │
+          ingestão     │                      │ fila newsletter:fila
+          autenticada  │                      │
+              ┌────────┴────────┐    ┌────────▼─────────────┐
+              │ scraper (Python)│    │ newsletter (.NET 8)  │
+              │ APScheduler     │    │ Quartz.NET cron 09h  │
+              │ • radar 3/3h    │    │ RazorLight + MailKit │
+              │ • curadoria 8h30│    │                      │
+              └─────────────────┘    └──────────────────────┘
 ```
+
+**A regra que organiza o código** (vale para os três serviços Python):
+
+> **Regra de negócio = função pura em `services/`. I/O = router.**
+
+Os routers buscam dados, convertem para dataclasses congeladas e delegam o cálculo. Nenhuma função de `api/app/services/` ou de `scraper/pipeline.py` toca banco, rede ou relógio — o que varia (inclusive a data de hoje) entra por parâmetro. É por isso que a suíte roda inteira em memória, sem Docker.
 
 **Por que essa divisão:**
 
-- **API core em Python/FastAPI** — coerente com a apresentação: os módulos de transformação de dados (normalização de scraping, comparativo de documentos, montagem da newsletter) são escritos como *pipelines de funções puras*, exemplos reais para o slide 27.
-- **Serviço de newsletter em C#/.NET** — worker independente que consome a fila do Redis, renderiza o e-mail e dispara às 09h. Justifica o .NET do CV e demonstra arquitetura de microsserviço.
-- **Scraper como módulo separado** — roda agendado (APScheduler), grava no MySQL e invalida cache no Redis. Falha de scraping nunca derruba o site.
+- **API core em Python/FastAPI** — os módulos de transformação (normalização de scraping, comparativo de documentos, curadoria da newsletter, árvore do FAQ) são *pipelines de funções puras*, exemplos reais para a apresentação.
+- **Worker de newsletter em C#/.NET** — serviço independente que consome a fila do Redis, renderiza o e-mail e dispara às 09h.
+- **Scraper separado** — roda agendado, grava via API e invalida o cache. Falha de scraping nunca derruba o site.
+
+Detalhamento em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md).
 
 ### Onde a programação funcional aparece (mapa código → apresentação)
 
-| Ferramenta do roteiro | Onde usamos no projeto |
+| Conceito | Onde vive |
 |---|---|
-| Funções puras / imutabilidade | Regras do comparativo de documentos: `calcular_gap(docs_exigidos, docs_do_perfil) -> Gap` — sem I/O, 100% testável; DTOs com `@dataclass(frozen=True)` |
-| Comprehensions | Normalização dos resultados de scraping em listas/dicts |
-| Generators / lazy | Paginação do feed de notícias e leitura de páginas raspadas item a item |
-| `map`/`filter` | Pipeline de limpeza de notícias (dedupe, filtro por categoria) |
-| `functools.reduce` | Agregação de score de "prontidão" do estudante por categoria |
-| `functools.partial` | Especialização de parsers por fonte (`parser_universitaly = partial(parse, fonte="universitaly")`) |
-| `functools.lru_cache` | Cache de consultas puras (ex.: lista de requisitos por curso) |
-| Closures / decoradores | `@cronometrar`, `@retry(backoff)`, `@exigir_auth` na API |
-| Recursão | Varredura de categorias aninhadas do FAQ |
+| Funções puras / imutabilidade | `calcular_gap`, `calcular_status` (`api/app/services/`); DTOs `@dataclass(frozen=True)` |
+| Comprehensions | normalização dos parsers (`scraper/sources/base.py`) |
+| Generators / lazy | `iterar_itens_rss`, `paginar`, `janelas` (`api/app/services/feed.py`) |
+| `map`/`filter` | pipeline de limpeza (`scraper/pipeline.py`) |
+| `functools.reduce` | `estatisticas` e `agrupar_por_topico` (curadoria) |
+| `functools.partial` | um parser por fonte (`parser_universitaly`) |
+| `functools.lru_cache` | `requisitos_por_categoria`, `get_settings`, `traduzir` |
+| Closures / decoradores | `@cronometrar`, `retry_backoff`, `@exigir_auth` |
+| Recursão | árvore de categorias do FAQ (`api/app/services/faq.py`) |
 
 ---
 
 ## 4. Stack detalhada
 
 ### Back-end (Python 3.12)
-- **FastAPI** + **Uvicorn** — API REST, docs automáticas (Swagger), validação com **Pydantic v2**.
+- **FastAPI** + **Uvicorn** — API REST, docs automáticas (Swagger), validação com **Pydantic v2** (schemas `frozen=True`).
 - **SQLAlchemy 2.0** + **Alembic** — ORM e migrations versionadas.
-- **httpx** (requisições async) + **BeautifulSoup4** — scraping de páginas estáticas.
-- **Playwright** — scraping de páginas com JavaScript (fallback).
-- **APScheduler** — agendamento dos jobs de scraping.
-- **Redis** — cache de feed + fila de e-mails (lista/stream) para o worker .NET.
-- **PyTest** — testes (as funções puras do comparativo são o alvo perfeito).
-- Qualidade: **ruff** (lint), **black** (formatação), **mypy** (type hints) — exatamente as dicas do slide 27.
+- **httpx** + **BeautifulSoup4** — coleta e parsing de páginas estáticas e RSS.
+- **Playwright** — fallback para páginas com challenge JavaScript.
+- **APScheduler** — agenda a coleta do Radar e a curadoria da newsletter.
+- **Redis** — cache do feed + fila da newsletter para o worker .NET.
+- **deep-translator** — tradução das notícias para português (serviço externo, com fallback).
+- **bcrypt** + **PyJWT** — autenticação.
+- **PyTest** — 161 testes; as funções puras rodam sem banco e sem rede.
+- Qualidade: **ruff** (lint), **black** (formatação), **mypy --strict** (tipos).
 
 ### Serviço de newsletter (C# / .NET 8)
 - **Worker Service** + **Quartz.NET** (cron `0 0 9 * * ?`, fuso America/Recife).
 - **StackExchange.Redis** — consome a fila montada pelo Python.
-- **MailKit** (SMTP) ou **SendGrid** — envio; template Razor para o HTML do e-mail.
+- **RazorLight** — renderiza o template `.cshtml` do e-mail em runtime.
+- **MailKit** — envio SMTP, com o logo embutido como recurso vinculado (`cid:`).
+- **xUnit** — 18 testes (parsing da fila, serialização e renderização).
 
 ### Front-end
-- **Fase 1 (MVP):** templates Jinja2 servidos pelo FastAPI + **Tailwind CSS** + JS vanilla — entrega rápida e tudo em Python.
-- **Fase 2:** migração das áreas logadas para **React + Vite + TypeScript** (stack do CV), consumindo a mesma API.
+- **Fase 1 (atual):** templates Jinja2 servidos pelo FastAPI + **Tailwind CSS** (CDN) + JS vanilla em `api/app/static/js/`.
+- **Fase 2:** migração das áreas logadas para **React + Vite + TypeScript**, consumindo a mesma API.
 
 ### Infra
-- **Docker + docker-compose** — 5 serviços: `api`, `scraper`, `newsletter`, `mysql`, `redis`.
-- **GitHub Actions** — lint + testes em todo PR; build das imagens no merge em `main`.
-- **Deploy** — VPS (Hetzner/Contabo/DigitalOcean) com compose + **Caddy** (HTTPS automático). Alternativa gratuita para demo: Railway/Render.
+- **Docker + docker-compose** — dev: `mysql`, `redis`, `mailpit`. Produção: os 5 serviços + Caddy.
+- **GitHub Actions** — lint, tipos e testes dos três módulos em todo push.
+- **Deploy** — VPS com `docker-compose.prod.yml` + **Caddy** (HTTPS automático).
+
+### Ferramentas de documentação
+Scripts em `docs/`, fora do caminho da aplicação: geração dos assets do logo (**Pillow**), da apresentação (**python-pptx**) e das capturas de tela (**Playwright**).
 
 ---
 
@@ -137,58 +161,93 @@ area_estudo             visto|outros)
 bio                   tipo (passaporte, ...)    cursos
 nivel_italiano        arquivo_url               ─────────────
 nivel_ingles          data_validade             id (pk)
-criado_em             status (ok|vencendo|      universidade_id (fk)
-                        vencido)                nome / grau (grad|mestrado)
-inscricoes_news       criado_em                 idioma / custo_anual
-─────────────                                   prazo_inscricao
-id, email,            requisitos_curso          tempo_preparacao_meses
-ativo, criado_em      ─────────────
-                      id, curso_id (fk),        estudante_universidade
-noticias              categoria, descricao,     ─────────────
-─────────────         obrigatorio (bool)        estudante_id + curso_id (pk)
-id, titulo, resumo,                             status, alerta_prazo (bool)
-url (uniq), fonte,    faq                       adicionado_em
-categoria, idioma,    ─────────────
-publicada_em,         id, categoria_id (fk auto-
-coletada_em             ref p/ subcategorias),
-                        pergunta, resposta, fontes
+criado_em             criado_em                 universidade_id (fk)
+                                                nome / grau (grad|mestrado)
+inscricoes_news       noticias                  idioma / custo_anual
+─────────────         ─────────────             prazo_inscricao
+id, email (uniq),     id, titulo, resumo,       tempo_preparacao_meses
+ativo, criado_em      url (uniq), fonte,
+                      categoria, idioma,        requisitos_curso
+edicoes_newsletter    publicada_em,             ─────────────
+─────────────         coletada_em               id, curso_id (fk),
+id, data (uniq),                                categoria, descricao,
+conteudo (JSON),      faq                       obrigatorio (bool)
+enviada_em,           ─────────────
+criado_em             id, categoria_id (fk      estudante_universidade
+                        AUTO-REFERENTE),        ─────────────
+                      nome, pergunta,           estudante_id + curso_id (pk)
+                      resposta, fontes (JSON),  status, alerta_prazo (bool)
+                      ordem                     adicionado_em
 ```
 
-O **comparativo** não é tabela: é função pura que recebe `requisitos_curso` × `documentos` do estudante e devolve `{atendidos, faltando, vencendo}` — calculado on-the-fly e cacheável com `lru_cache`.
+Três decisões de modelagem que valem nota:
+
+- **O comparativo não é tabela.** É função pura que recebe `requisitos_curso` × `documentos` e devolve `{atendidos, faltando, vencendo}` — calculado on-the-fly e cacheável com `lru_cache`.
+- **O status do documento não é coluna.** É derivado na leitura por `calcular_status(validade, hoje)`; gravá-lo deixaria o dado defasado no dia seguinte.
+- **O FAQ é uma árvore numa tabela só.** `categoria_id` referencia `faq.id`, o que permite subcategorias em qualquer profundidade — e é a estrutura que a recursão percorre.
 
 ---
 
-## 6. Fontes de dados (scraping + APIs)
+## 6. Fontes de dados (scraping + RSS)
 
-| Fonte | Tipo | O que extrair |
+| Fonte | Tipo | Estado |
 |---|---|---|
-| **Universitaly** (universitaly.it) | Scraping | Cursos, universidades, requisitos de pré-matrícula |
-| **Study in Italy / MAECI** | Scraping | Regras de visto de estudo, prazos consulares |
-| **DISCO/laziodisco e regionais** | Scraping | Bolsas regionais (DSU) |
-| **Scholarships portals (ex.: studyinitaly, europa.eu)** | Scraping/RSS | Bolsas e editais europeus |
-| **Reddit API** (r/Italy, r/studyAbroad) | API oficial | Discussões e dúvidas recorrentes (alimenta FAQ) |
-| **Google News RSS** (queries: "studiare in Italia stranieri", "student visa Italy") | RSS | Notícias gerais |
-| **X/Twitter** | API (avaliar custo) ou fallback via Nitter/RSS | Alertas de consulados e perfis de intercâmbio |
+| **Google News RSS** (queries "studiare in Italia stranieri", "student visa Italy") | RSS | ✅ coletando |
+| **laziodisco.it** — bolsas do DSU do Lazio | Scraping | ✅ coletando |
+| **studyinitaly.esteri.it** — bandos do MAECI | Scraping | ✅ coletando |
+| **Universitaly** — cursos e requisitos | Scraping | ⛔ bloqueado por WAF — usa fixture |
+| DISCO de outras regiões | Scraping | ⬜ não implementado |
+| Reddit API | API oficial | ⬜ depende de decisão sobre auth/custo |
+| X/Twitter | API paga | ⬜ "nice to have" |
 
-Regras do scraper: respeitar `robots.txt`, identificar `User-Agent`, intervalo entre requisições, dedupe por URL, retry com backoff exponencial (decorador funcional — mesmo padrão que você já usa na integração SEFAZ do Tuttor).
+**Regras do scraper:** respeitar `robots.txt` (RSS é isento — é endpoint de sindicação), identificar `User-Agent`, intervalo entre requisições, dedupe por URL em duas camadas (lote e índice único), retry com backoff exponencial via decorador, e isolamento por fonte — uma fonte fora do ar não impede as outras.
+
+**Sobre o Universitaly:** fica atrás de AWS WAF com challenge JavaScript. Foram tentados httpx (HTTP 202 vazio) e Playwright com Chromium (também barrado). **A decisão registrada é não insistir em contornar o bloqueio** — nada de rotação de IP ou resolução de captcha. A coleta usa fixture e o parser segue testado. Detalhes em [`docs/FONTES_SCRAPING.md`](docs/FONTES_SCRAPING.md).
 
 ---
 
 ## 7. Newsletter diária (09h)
 
-1. **Curadoria (Python, job 08h30):** função-pipeline seleciona as notícias das últimas 24h, ranqueia, agrupa nos **10 tópicos essenciais** (vistos · prazos · bolsas · idioma · moradia · finanças · documentação · admissões · vida na Itália · mercado para estrangeiros) e publica um JSON na fila do Redis.
-2. **Disparo (.NET, 09h):** worker lê a fila, renderiza o template HTML (design clean, mesma identidade do site) e envia para todos os inscritos ativos; grava log de envio.
-3. **Arquivo:** cada edição vira página em `/newsletter/{data}` no site.
+1. **Curadoria (08h30, agendada pelo scraper)** — dispara `POST /api/newsletter/curadoria`. A função pura `curar` seleciona as notícias da janela, ranqueia por recência e agrupa nos **10 tópicos essenciais** (vistos · prazos · bolsas · idioma · moradia · finanças · documentação · admissões · vida na Itália · mercado para estrangeiros) com `reduce`. O texto é resumido (`resumir`, puro) e traduzido para português (`traduzir`, I/O com cache e fallback). A edição é arquivada no banco e publicada na fila do Redis.
+2. **Disparo (09h, worker .NET)** — lê a fila, busca os inscritos ativos na API, renderiza o HTML com RazorLight e envia por MailKit, **uma mensagem por inscrito** (Bcc vazaria a lista). Ao final confirma o envio na API.
+3. **Arquivo** — cada edição vira página em `/newsletter/{data}`.
+
+A curadoria é **idempotente por dia**: `edicoes_newsletter.data` é única, então rodar de novo atualiza a edição em vez de duplicar.
+
+**Em desenvolvimento** o SMTP aponta para o **Mailpit** do compose (captura as mensagens em `localhost:8025`, não entrega nada). Para envio real, basta apontar `SMTP_*` no `.env` para um provedor — com Gmail é obrigatório usar **senha de app**, e o remetente precisa ser a mesma conta autenticada.
 
 ---
 
-## 8. Design (referência: Duolingo — clean e moderno)
+## 8. Design
 
-- **Paleta contida:** fundo branco/off-white `#FAFAF7`, texto grafite `#1F2933`, **um** verde de ação `#2E7D5B` (aceno à bandeira italiana sem clichê), cinzas de apoio. Nada de neon, nada de gradiente chamativo.
-- **Tipografia:** Inter ou Nunito Sans (títulos bold, corpo regular, entrelinha generosa).
-- **Componentes:** cards com cantos arredondados (12–16px), sombras sutis, muito espaço em branco, ícones de linha (Lucide).
-- **Tom:** direto e amigável; landing com uma frase-problema, uma frase-solução, um CTA.
-- **Acessibilidade:** contraste AA, foco visível, mobile-first.
+O logo é um monograma **PI** sobre uma ponte, dentro de uma estrela de quatro pontas, impresso em papel. Dele saem duas paletas irmãs.
+
+### Site (Jinja2 + Tailwind)
+
+| Papel | Hex |
+|---|---|
+| Fundo | `#FAFAF7` |
+| Texto | `#1F2933` |
+| Ação | `#2E7D5B` |
+| Ação suave | `#EAF3EF` |
+
+### Carta (e-mail) e apresentação — tons do papel do logo
+
+| Papel | Hex | Contraste sobre `#F0E8DE` |
+|---|---|---|
+| Fundo | `#F0E8DE` | — |
+| Creme (cartões) | `#F2E5D5` | — |
+| Neutro (cartões) | `#E3E2DF` | — |
+| Tinta | `#1B1A18` | 15,4:1 ✅ |
+| Sálvia escura (rótulos) | `#5A5A47` | 5,7:1 ✅ |
+| Sálvia (ornamento) | `#797963` | 3,7:1 — **só texto grande e filetes** |
+| Bege (bordas) | `#BFAE99` | — |
+
+**Tipografia:** Inter (site) e serifada (carta e slides, para o tom de documento).
+**Componentes:** cards `rounded-2xl`, sombras sutis, muito espaço em branco.
+**Acessibilidade:** contraste AA, foco visível em todo elemento interativo, semântica antes de estilo (`<details>` no FAQ, `role="search"`, `aria-live` nos avisos), mobile-first.
+
+Os assets do logo são gerados por `docs/gerar_logo.py`, que extrai a silhueta do mockup em papel e produz as versões monocromáticas (verde, sálvia, bege, branco) mais os favicons. Detalhes em [`docs/DESIGN.md`](docs/DESIGN.md).
 
 ---
 
@@ -196,56 +255,63 @@ Regras do scraper: respeitar `robots.txt`, identificar `User-Agent`, intervalo e
 
 ```
 scrapping_italy/
-├── README.md
-├── docker-compose.yml
-├── .github/workflows/ci.yml
-├── api/                      # FastAPI (Python)
+├── README.md · CLAUDE.md · .env.example
+├── docker-compose.yml            # dev: mysql, redis, mailpit
+├── docker-compose.prod.yml       # produção: 5 serviços + caddy
+├── .github/workflows/ci.yml      # api · scraper · newsletter
+├── deploy/
+│   ├── Caddyfile                 # HTTPS automático
+│   └── smoke.sh                  # 16 verificações pós-deploy
+├── api/                          # FastAPI (Python)
 │   ├── app/
 │   │   ├── main.py
-│   │   ├── core/             # config, seguranca, decoradores
-│   │   ├── models/           # SQLAlchemy
-│   │   ├── schemas/          # Pydantic (frozen)
-│   │   ├── routers/          # estudantes, documentos, universidades, noticias, faq, newsletter
-│   │   ├── services/         # FUNÇÕES PURAS: comparativo, ranking, curadoria
-│   │   └── templates/        # Jinja2 (fase 1)
-│   ├── tests/
-│   ├── alembic/
+│   │   ├── core/                 # config, db, segurança, cache, fila, tradução
+│   │   ├── models/               # SQLAlchemy
+│   │   ├── schemas/              # Pydantic (frozen)
+│   │   ├── routers/              # I/O: estudantes, documentos, universidades,
+│   │   │                         #      notícias, newsletter, faq, páginas
+│   │   ├── services/             # FUNÇÕES PURAS: comparativo, curadoria, feed, faq
+│   │   ├── templates/            # Jinja2
+│   │   └── static/               # JS e imagens (logo, favicons)
+│   ├── tests/                    # 161 testes
+│   ├── alembic/                  # 6 migrations
+│   ├── Dockerfile
 │   └── pyproject.toml
-├── scraper/                  # Python
-│   ├── sources/              # um parser por fonte (partial/HOF)
-│   ├── pipeline.py           # map/filter/reduce de limpeza
-│   ├── scheduler.py          # APScheduler
-│   └── tests/
-├── newsletter/               # C#/.NET 8 Worker
-│   ├── Newsletter.Worker/
-│   └── Newsletter.Tests/
+├── scraper/                      # Python
+│   ├── sources/                  # um parser por fonte (partial/HOF)
+│   ├── pipeline.py               # map/filter/reduce de limpeza
+│   ├── coleta.py · navegador.py  # HTTP educado + fallback Playwright
+│   ├── scheduler.py              # APScheduler: radar + curadoria
+│   ├── tests/                    # 36 testes, sem rede
+│   └── Dockerfile
+├── newsletter/                   # C#/.NET 8
+│   ├── Newsletter.Worker/        # Quartz, Redis, Razor, MailKit
+│   ├── Newsletter.Tests/         # 18 testes (xUnit)
+│   └── Dockerfile
 └── docs/
-    ├── ARQUITETURA.md
-    ├── FONTES_SCRAPING.md
-    └── DESIGN.md
+    ├── ARQUITETURA.md · FONTES_SCRAPING.md · DESIGN.md
+    ├── RELATORIO_FP.md           # 16 conceitos de PF documentados
+    ├── AJUSTES_APRESENTACAO.md   # conformidade da apresentação
+    ├── PF-Python-Ponte-Italia.pptx / .pdf
+    ├── screenshots/              # capturas do sistema
+    ├── gerar_logo.py · gerar_slides.py · capturar_telas.py
+    └── verificar_slides.py · verificar_layout.py
 ```
 
 ---
 
-## 10. Roadmap (6 sprints de 1 semana)
+## 10. Roadmap — concluído
 
-**Sprint 1 — Fundação**
-Repo, docker-compose (mysql+redis), FastAPI esqueleto, Alembic, modelos `estudantes`/`documentos`, seed do Juliano e do Davi, CI com ruff+pytest.
+| Sprint | Entrega | Estado |
+|---|---|---|
+| **1 — Fundação** | docker-compose, FastAPI, Alembic, modelos de estudantes/documentos, seed, CI | ✅ |
+| **2 — Perfis e cofre** | CRUD, auth JWT + bcrypt, upload com validade e status derivado, páginas Jinja2 | ✅ |
+| **3 — Universidades** | modelos de cursos/requisitos, **`calcular_gap` puro** + testes, tela de comparativo | ✅ |
+| **4 — Radar** | 3 fontes + pipeline funcional, APScheduler, aba Radar com filtros, cache Redis | ✅ |
+| **5 — Newsletter** | curadoria em 10 tópicos, fila Redis, worker .NET com Quartz + MailKit, arquivo de edições | ✅ |
+| **6 — FAQ, polimento e deploy** | FAQ recursivo, aba Ajuda, extração do JS, Caddy + compose de produção, documentação | ✅ |
 
-**Sprint 2 — Perfis e cofre de documentos**
-CRUD de estudantes, auth (JWT simples), upload de arquivos com categoria/validade/status, páginas Jinja2 + Tailwind (home, estudantes, perfil).
-
-**Sprint 3 — Universidades e comparativo**
-Modelos `universidades`/`cursos`/`requisitos`, cadastro manual + primeira fonte via scraping (Universitaly), **função pura `calcular_gap`** com bateria de testes, tela de comparativo e alertas de prazo.
-
-**Sprint 4 — Radar (scraping)**
-Módulo `scraper/` com 3 fontes + Google News RSS, pipeline funcional de limpeza/dedupe, APScheduler, aba Radar com filtros por categoria, cache Redis.
-
-**Sprint 5 — Newsletter**
-Job de curadoria (10 tópicos) → fila Redis → worker .NET com Quartz + MailKit, template de e-mail, página de inscrição e arquivo de edições.
-
-**Sprint 6 — FAQ, polimento e deploy**
-FAQ com categorias (varredura Reddit + curadoria), revisão de design, Caddy + HTTPS na VPS, deploy do compose, smoke tests, documentação final.
+Cada sprint tem uma branch própria (`sprint-1-fundacao` … `sprint-6-faq-deploy`), toda mergeada em `main`.
 
 ---
 
@@ -254,19 +320,59 @@ FAQ com categorias (varredura Reddit + curadoria), revisão de design, Caddy + H
 ```bash
 git clone https://github.com/julianosfreitas/scrapping_italy.git
 cd scrapping_italy
-cp .env.example .env          # segredos: DB, Redis, SMTP
-docker compose up -d mysql redis
-cd api && pip install -e ".[dev]" && alembic upgrade head
-uvicorn app.main:app --reload  # http://localhost:8000
-# scraper:    python -m scraper.scheduler
-# newsletter: dotnet run --project newsletter/Newsletter.Worker
+cp .env.example .env          # ajuste segredos: DB, JWT, PONTE_*, SMTP
+
+# 1. infraestrutura
+docker compose up -d mysql redis mailpit
+
+# 2. api
+cd api
+python -m venv .venv && .venv/Scripts/activate    # Linux/macOS: source .venv/bin/activate
+pip install -e ".[dev]"
+alembic upgrade head
+python -m app.seed            # estudantes iniciais
+python -m app.seed_faq        # árvore do FAQ
+uvicorn app.main:app --reload # http://localhost:8000
+
+# 3. scraper (radar 3/3h + curadoria 08h30)
+cd .. && PONTE_EMAIL=... PONTE_SENHA=... python -m scraper.scheduler
+
+# 4. worker da newsletter
+cd newsletter && dotnet run --project Newsletter.Worker
 ```
+
+Caixa de entrada de teste (Mailpit): <http://localhost:8025>
+API documentada: <http://localhost:8000/docs>
+
+### Gate de qualidade
+
+```bash
+cd api      && ruff check . && black --check . && mypy app && pytest
+cd ..       && ruff check scraper && black --check scraper \
+            && MYPYPATH=api mypy --config-file scraper/pyproject.toml -p scraper \
+            && pytest scraper/tests
+cd newsletter && dotnet build && dotnet test
+./deploy/smoke.sh                 # com a api no ar
+```
+
+### Produção
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml exec api alembic upgrade head
+./deploy/smoke.sh https://SEU.DOMINIO
+```
+
+Antes de subir, defina no `.env`: `DOMINIO`, `ACME_EMAIL`, `MYSQL_*`, `JWT_SEGREDO`, `PONTE_EMAIL`/`PONTE_SENHA` e as credenciais SMTP. O certificado só é emitido com o domínio já apontando para o servidor e as portas 80/443 abertas.
 
 ---
 
 ## 12. Riscos e decisões em aberto
 
-- **API do X/Twitter é paga** — começar por Reddit + RSS; Twitter fica como "nice to have".
-- **Sites italianos mudam de HTML** — parsers isolados por fonte + testes de contrato; falha de uma fonte não derruba o feed.
-- **LGPD** — documentos pessoais: armazenar fora do repositório (volume/S3), URLs assinadas, senha com hash (bcrypt), HTTPS obrigatório.
-- **Entregabilidade de e-mail** — usar SendGrid/Resend com domínio verificado (SPF/DKIM) em vez de SMTP puro, para não cair em spam.
+- **Universitaly atrás de WAF.** Decisão registrada: não contornar. A fonte usa fixture até haver acesso legítimo ou API oficial.
+- **Entrega da fila é *at-most-once*.** O worker faz `RPOP`, que remove antes de processar: se ele morrer no meio do disparo, aquela edição sai da fila. A recuperação é simples porque a edição continua no banco — basta rodar a curadoria de novo. Uma fila confiável (`LMOVE` para lista de processamento) é o próximo passo natural.
+- **Tradução depende de serviço externo não oficial.** `deep-translator` usa o Google Tradutor; se cair, o texto sai no idioma original em vez de a edição falhar. Um resumo *abstrativo* de verdade exigiria um LLM — hoje o resumo é extrativo (primeiras frases).
+- **Janela da curadoria.** `curar` considera a data de publicação (e a de coleta, quando não há publicação). Se as fontes não publicarem nada nas últimas 24h, a edição do dia sai vazia — comportamento correto para a leitura literal da seção 7; o parâmetro `janela_horas` permite ampliar.
+- **Gmail para envio real** tem limite diário e tende a cair em spam quando o volume cresce. Produção pede SendGrid/Resend com domínio verificado (SPF/DKIM).
+- **Tailwind via CDN** é ótimo para prototipar e ruim para produção (sem purge, sem versão fixa). Some na migração para React + Vite da fase 2.
+- **LGPD** — documentos pessoais ficam em volume fora do repositório, com URL assinada de escopo restrito, senha com bcrypt e HTTPS obrigatório.
