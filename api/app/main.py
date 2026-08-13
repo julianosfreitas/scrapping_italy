@@ -13,6 +13,7 @@ from app.routers import (
     auth,
     documentos,
     estudantes,
+    faq,
     newsletter,
     noticias,
     paginas,
@@ -39,6 +40,7 @@ app.include_router(documentos.router)
 app.include_router(universidades.router)
 app.include_router(noticias.router)
 app.include_router(newsletter.router)
+app.include_router(faq.router)
 app.include_router(paginas.router)
 
 
