@@ -26,8 +26,8 @@
 | 12 | functools.lru_cache | ✅ implementado | `requisitos_por_categoria` em `api/app/services/comparativo.py` (+ `get_settings`) |
 | 13 | Closures | ✅ implementado | `retry_backoff` em `api/app/core/decoradores.py` |
 | 14 | Decoradores (@wraps) | ✅ implementado | `@cronometrar`, `@retry_backoff` e `@exigir_auth` (`api/app/core/seguranca.py`) |
-| 15 | Recursão | ⬜ pendente | árvore de categorias do FAQ |
-| 16 | Comparação imperativo × funcional | ⬜ pendente | estudo de caso do relatório |
+| 15 | Recursão | ✅ implementado | **CENTRAL: `todas_perguntas` em `api/app/services/faq.py`**; também `profundidade`, `caminho_ate`, `montar_arvore` e `iterar_categorias` |
+| 16 | Comparação imperativo × funcional | ✅ implementado | **CENTRAL: estudo de caso do `calcular_gap` (entrada 16)**; comparações menores nas entradas 8b e 15 |
 
 Legenda: ⬜ pendente · 🟨 parcial · ✅ implementado e documentado
 
@@ -515,6 +515,169 @@ impossível se a função materializasse a entrada. Outro teste instrumentado
 prova que, pedida a página 1 de 3 itens, exatamente 3 itens são produzidos
 de um gerador de 999. `janelas()` complementa: um gerador de páginas
 consecutivas que a newsletter (Sprint 5) consumirá lote a lote.
+
+---
+
+### 15. RECURSÃO — a árvore de categorias do FAQ *(exemplo central)*
+
+**Onde:** `api/app/services/faq.py` → `todas_perguntas()`, `profundidade()`,
+`caminho_ate()`, `montar_arvore()`
+**Sprint:** 6 · **Commit:** `bb37d87`
+
+```python
+def todas_perguntas(categoria: Categoria) -> tuple[Pergunta, ...]:
+    """Todas as perguntas da categoria e de TODAS as subcategorias."""
+    return categoria.perguntas + tuple(
+        pergunta
+        for subcategoria in categoria.subcategorias
+        for pergunta in todas_perguntas(subcategoria)
+    )
+
+
+def profundidade(categoria: Categoria) -> int:
+    if not categoria.subcategorias:          # CASO BASE explícito
+        return 1
+    return 1 + max(profundidade(s) for s in categoria.subcategorias)
+```
+
+**Por que funcional ajudou:** a estrutura é recursiva por natureza — uma
+categoria contém perguntas **e** subcategorias, que contêm perguntas e
+subcategorias, sem profundidade fixa. A definição do problema e o código têm
+exatamente a mesma forma, e o caso base cabe numa linha: em `todas_perguntas`
+ele é implícito (a comprehension sobre `()` não produz nada e a recursão
+para); em `profundidade` é explícito, para deixar o conceito visível na
+apresentação. A versão iterativa precisaria de uma pilha manual — que é
+justamente o que a recursão já ganha do interpretador. Como `Categoria` e
+`Pergunta` são `@dataclass(frozen=True)`, nenhuma chamada pode alterar a
+árvore por baixo de outra, e os 19 testes de `test_faq.py` rodam sem banco:
+árvore rasa, profunda (5 níveis), vazia, órfã e busca.
+
+**O custo em Python (a nota honesta):** o CPython **não faz tail-call
+optimization**. Cada chamada consome um frame e o limite padrão é ~1000
+(`sys.getrecursionlimit()`), então uma árvore com mil níveis de subcategoria
+estouraria com `RecursionError`. Aqui isso é irrelevante — o FAQ real tem
+3 níveis, e `test_profundidade_fica_muito_abaixo_do_limite_do_python`
+documenta a margem. Em estruturas que podem ser profundas de verdade (um
+filesystem, uma árvore de comentários sem limite), a versão iterativa com
+pilha explícita seria a escolha correta. **Recursão é a ferramenta certa
+quando a profundidade é limitada pelo domínio, não pelo acaso.**
+
+**Equivalente imperativo:**
+
+```python
+# mesma travessia com pilha explícita: mais linhas, e a ordem de visita
+# vira responsabilidade de quem escreve (note o reversed() para não sair
+# com os ramos trocados)
+def todas_perguntas_imperativo(categoria):
+    perguntas = []
+    pilha = [categoria]
+    while pilha:
+        atual = pilha.pop()
+        perguntas.extend(atual.perguntas)
+        pilha.extend(reversed(atual.subcategorias))
+    return tuple(perguntas)
+```
+
+**Bônus — recursão + generator (conceito 10):** `iterar_categorias` usa
+`yield from` para percorrer a floresta sob demanda; a página do FAQ só
+consome o que vai renderizar. E `montar_arvore` é recursiva na direção
+oposta: transforma as linhas PLANAS da tabela (que tem `categoria_id`
+auto-referente) na árvore imutável, em uma única consulta ao banco — evitando
+o N+1 que um passeio recursivo pelo ORM provocaria.
+
+---
+
+### 16. Imperativo × funcional — o estudo de caso do `calcular_gap` *(central)*
+
+**Onde:** `api/app/services/comparativo.py` → `calcular_gap()`
+**Sprint:** 3 (código) · 6 (consolidação) · **Commit:** `ea7bae5`
+
+O comparativo é a regra mais importante do site: cruza os requisitos de um
+curso com os documentos do estudante e devolve `{atendidos, faltando,
+vencendo}`. É o melhor caso para a comparação porque a versão imperativa
+"natural" não é um espantalho — é exatamente o que sai quando se escreve
+direto no router.
+
+**Versão funcional (a que está no projeto):**
+
+```python
+def calcular_gap(
+    requisitos: tuple[Requisito, ...],
+    documentos: tuple[DocumentoResumo, ...],
+) -> Gap:
+    docs_por_categoria = agrupar_por_categoria(documentos, lambda d: d.categoria)
+    avaliacoes = tuple(
+        _avaliar(requisito, docs_por_categoria.get(categoria, ()))
+        for categoria, do_grupo in requisitos_por_categoria(requisitos).items()
+        for requisito in do_grupo
+    )
+    return Gap(
+        atendidos=tuple(item for situacao, item in avaliacoes if situacao == "atendido"),
+        faltando=tuple(item for situacao, item in avaliacoes if situacao == "faltando"),
+        vencendo=tuple(item for situacao, item in avaliacoes if situacao == "vencendo"),
+    )
+```
+
+**Versão imperativa equivalente (a que o projeto NÃO usa):**
+
+```python
+def calcular_gap_imperativo(sessao, curso_id, estudante_id, hoje):
+    atendidos, faltando, vencendo = [], [], []
+    requisitos = sessao.query(RequisitoCurso).filter_by(curso_id=curso_id).all()
+    for requisito in requisitos:
+        # 1 consulta por requisito: o N+1 clássico
+        docs = (
+            sessao.query(Documento)
+            .filter_by(estudante_id=estudante_id, categoria=requisito.categoria)
+            .all()
+        )
+        achou_ok = False
+        achou_vencendo = False
+        nomes = []
+        for documento in docs:
+            # status recalculado aqui dentro, com o relógio lido do sistema
+            if documento.data_validade is None or documento.data_validade > hoje + timedelta(days=30):
+                achou_ok = True
+                nomes.append(documento.tipo)
+            elif documento.data_validade >= hoje:
+                achou_vencendo = True
+                nomes.append(documento.tipo)
+        if achou_ok:
+            atendidos.append({"requisito": requisito, "documentos": nomes})
+        elif achou_vencendo:
+            vencendo.append({"requisito": requisito, "documentos": nomes})
+        else:
+            faltando.append({"requisito": requisito, "documentos": []})
+    return {"atendidos": atendidos, "faltando": faltando, "vencendo": vencendo}
+```
+
+**O que muda, ponto a ponto:**
+
+| | Imperativa | Funcional (o projeto) |
+|---|---|---|
+| **Consultas ao banco** | 1 + N (uma por requisito) | 0 — recebe tuplas prontas; o router faz a consulta |
+| **Testabilidade** | precisa de banco, fixtures e sessão | três linhas, sem mock: `calcular_gap(reqs, docs)` |
+| **Relógio** | `hoje` lido no meio da regra | status já chega derivado por `calcular_status` |
+| **Estado** | 3 listas mutadas por `append` aninhado | tuplas imutáveis, uma passada de avaliação |
+| **Duplicação da regra de status** | reimplementada dentro do laço | uma função só, usada por todo o sistema |
+| **Reuso** | amarrada a SQLAlchemy | serve ORM, JSON, CSV — só depende das dataclasses |
+
+**Os três defeitos que o estilo imperativo trouxe de brinde:**
+
+1. **N+1** — 20 requisitos = 21 consultas. A versão funcional faz uma, e
+   `requisitos_por_categoria` ainda é `@lru_cache`-ada, o que só é seguro
+   porque entrada e saída são imutáveis (transparência referencial, entrada 12).
+2. **Status defasado** — a regra de vencimento aparece duas vezes (aqui e em
+   `calcular_status`); mudar a janela de 30 dias em um lugar e esquecer o
+   outro é questão de tempo.
+3. **Vazamento de estado** — as listas devolvidas são mutáveis: qualquer
+   camada acima pode alterar o resultado do comparativo sem que a regra saiba.
+
+**O que NÃO muda:** as duas versões dão o mesmo resultado. O argumento a favor
+do estilo funcional aqui não é desempenho bruto nem elegância — é que a regra
+de negócio ficou **isolada do I/O**, e por isso pôde ser coberta por testes
+que rodam em milissegundos e documentam o comportamento esperado. Foi isso
+que permitiu 154 testes na api rodarem sem Docker, sem banco e sem rede.
 
 ---
 
