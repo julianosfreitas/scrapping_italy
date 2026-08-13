@@ -31,6 +31,20 @@ services:
       timeout: 3s
       retries: 10
 
+  # SMTP de TESTE (dev): captura os e-mails da newsletter em vez de enviá-los.
+  # Caixa de entrada web em http://localhost:8025. Em produção o worker aponta
+  # para SendGrid/Resend com domínio verificado — ver docs/ARQUITETURA.md.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: ponte_italia_mailpit
+    ports:
+      - "${SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+    environment:
+      MP_MAX_MESSAGES: 500
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
 volumes:
   mysql_data:
   redis_data:
