@@ -29,23 +29,35 @@ from pptx.util import Emu, Inches, Pt
 
 RAIZ = Path(__file__).resolve().parents[1]
 TELAS = RAIZ / "docs" / "screenshots"
-LOGO = RAIZ / "api" / "app" / "static" / "img" / "logo-marca.png"
+LOGO = RAIZ / "api" / "app" / "static" / "img" / "logo-marca-salvia.png"
+LOGO_ESCURO = RAIZ / "api" / "app" / "static" / "img" / "logo-marca-bege.png"
 SAIDA = RAIZ / "docs" / "PF-Python-Ponte-Italia.pptx"
 
-# ── identidade visual (seção 8 do README) ────────────────
-NAVY = RGBColor(0x16, 0x23, 0x2B)
-OFFWHITE = RGBColor(0xFA, 0xFA, 0xF7)
-BRANCO = RGBColor(0xFF, 0xFF, 0xFF)
-GRAFITE = RGBColor(0x1F, 0x29, 0x33)
-VERDE = RGBColor(0x2E, 0x7D, 0x5B)
-VERDE_CLARO = RGBColor(0xEA, 0xF3, 0xEF)
-VERDE_SUAVE = RGBColor(0x6E, 0xC0, 0x9B)
-CINZA = RGBColor(0x5B, 0x66, 0x70)
-CINZA_CLARO = RGBColor(0xF3, 0xF4, 0xF6)
-CODIGO_FUNDO = RGBColor(0x14, 0x1E, 0x26)
-CODIGO_TEXTO = RGBColor(0xE6, 0xEC, 0xF0)
-VERMELHO = RGBColor(0xB0, 0x2A, 0x37)
-AMBAR = RGBColor(0x8A, 0x5A, 0x00)
+# ── paleta: as cores do logo impresso em papel ───────────
+#
+# Contraste conferido contra o fundo #F0E8DE (o critério de pontuação pune
+# "padrão de cores que dificulte a leitura"):
+#
+#   tinta   #1B1A18 -> 15,4:1   texto corrido
+#   sálvia  #5A5A47 ->  5,7:1   rótulos e apoio  (passa em qualquer tamanho)
+#   sálvia  #797963 ->  3,7:1   SÓ ornamento e número grande — nunca corpo
+#
+NAVY = RGBColor(0x1B, 0x1A, 0x18)  # tinta: fundo dos slides de seção
+OFFWHITE = RGBColor(0xF0, 0xE8, 0xDE)  # papel: fundo padrão
+BRANCO = RGBColor(0xF7, 0xF3, 0xEE)
+GRAFITE = RGBColor(0x1B, 0x1A, 0x18)  # texto corrido
+VERDE = RGBColor(0x5A, 0x5A, 0x47)  # sálvia escura: rótulos e destaques
+VERDE_CLARO = RGBColor(0xF2, 0xE5, 0xD5)  # creme: cartões de destaque
+VERDE_SUAVE = RGBColor(0xBF, 0xAE, 0x99)  # bege: texto sobre fundo escuro
+CINZA = RGBColor(0x5A, 0x5A, 0x47)  # apoio (mesmo contraste do rótulo)
+CINZA_CLARO = RGBColor(0xE3, 0xE2, 0xDF)  # cartões neutros
+ORNAMENTO = RGBColor(0x79, 0x79, 0x63)  # filetes e numerais grandes
+CODIGO_FUNDO = RGBColor(0x1B, 0x1A, 0x18)
+CODIGO_TEXTO = RGBColor(0xF0, 0xE8, 0xDE)
+CODIGO_COMENTARIO = RGBColor(0xBF, 0xAE, 0x99)
+VERMELHO = RGBColor(0x8C, 0x3A, 0x2E)  # terracota: o lado imperativo
+VERMELHO_CLARO = RGBColor(0xF3, 0xE0, 0xDA)
+AMBAR = RGBColor(0x79, 0x79, 0x63)  # selo das dicas pessoais
 
 SERIF = "Georgia"
 SANS = "Calibri"
@@ -205,13 +217,13 @@ class Deck:
             MSO_SHAPE.OVAL, Inches(9.6), Inches(3.2), Inches(4.6), Inches(4.6)
         )
         circulo.fill.solid()
-        circulo.fill.fore_color.rgb = VERDE
+        circulo.fill.fore_color.rgb = ORNAMENTO
         circulo.line.fill.background()
         circulo.shadow.inherit = False
 
-        if LOGO.exists():
+        if LOGO_ESCURO.exists():
             slide.shapes.add_picture(
-                str(LOGO), MARGEM, Inches(0.75), height=Inches(0.95)
+                str(LOGO_ESCURO), MARGEM, Inches(0.75), height=Inches(0.95)
             )
 
         quadro = _caixa(slide, MARGEM, Inches(2.0), Inches(9.0), Inches(0.4))
@@ -223,15 +235,15 @@ class Deck:
                primeiro=True, entrelinha=1.05)
 
         quadro = _caixa(slide, MARGEM, Inches(4.6), Inches(9.0), Inches(0.5))
-        _texto(quadro, subtitulo, SUBTITULO, RGBColor(0xC7, 0xD2, 0xD8),
+        _texto(quadro, subtitulo, SUBTITULO, RGBColor(0xD6, 0xCE, 0xC2),
                italico=True, primeiro=True)
 
         cartao = _retangulo(slide, MARGEM, Inches(5.4), Inches(4.6),
-                            Inches(1.05), RGBColor(0x22, 0x33, 0x3D))
+                            Inches(1.05), RGBColor(0x33, 0x31, 0x2C))
         quadro = cartao.text_frame
         quadro.margin_left = quadro.margin_top = Inches(0.22)
         _texto(quadro, autor, CORPO_MIN, BRANCO, negrito=True, primeiro=True)
-        _texto(quadro, instituicao, CORPO_MIN, RGBColor(0xB8, 0xC4, 0xCC))
+        _texto(quadro, instituicao, CORPO_MIN, RGBColor(0xC9, 0xC0, 0xB2))
 
         self._rodape(slide, escuro=True)
         return slide
@@ -239,7 +251,7 @@ class Deck:
     def secao(self, numero: str, titulo: str, subtitulo: str):
         slide = self._novo(NAVY)
         quadro = _caixa(slide, MARGEM, Inches(2.0), Inches(6), Inches(1.6))
-        _texto(quadro, numero, Pt(90), VERDE, fonte=SERIF, negrito=True,
+        _texto(quadro, numero, Pt(90), ORNAMENTO, fonte=SERIF, negrito=True,
                primeiro=True)
 
         quadro = _caixa(slide, MARGEM, Inches(3.6), Inches(11), Inches(0.9))
@@ -322,7 +334,7 @@ class Deck:
         quadro.margin_left = Inches(0.28)
         quadro.margin_top = Inches(0.2)
         for indice, linha in enumerate(linhas):
-            cor = VERDE_SUAVE if linha.lstrip().startswith("#") else CODIGO_TEXTO
+            cor = CODIGO_COMENTARIO if linha.lstrip().startswith("#") else CODIGO_TEXTO
             _texto(quadro, linha or " ", CODIGO, cor, fonte=MONO,
                    primeiro=indice == 0, entrelinha=1.0)
 
@@ -359,7 +371,7 @@ class Deck:
             # cinza quando o lado é apenas neutro
             fundo = {
                 VERDE: VERDE_CLARO,
-                VERMELHO: RGBColor(0xFB, 0xE9, 0xEA),
+                VERMELHO: VERMELHO_CLARO,
             }.get(cor, CINZA_CLARO)
             faixa = _retangulo(slide, x, y, largura, Inches(0.5), fundo)
             quadro = faixa.text_frame
@@ -374,7 +386,9 @@ class Deck:
             quadro.margin_top = Inches(0.18)
             for posicao, linha in enumerate(linhas):
                 cor_linha = (
-                    VERDE_SUAVE if linha.lstrip().startswith("#") else CODIGO_TEXTO
+                    CODIGO_COMENTARIO
+                    if linha.lstrip().startswith("#")
+                    else CODIGO_TEXTO
                 )
                 _texto(quadro, linha or " ", CODIGO, cor_linha, fonte=MONO,
                        primeiro=posicao == 0, entrelinha=1.0)
@@ -466,18 +480,18 @@ class Deck:
 
     def encerramento(self, titulo, subtitulo, repositorio):
         slide = self._novo(NAVY)
-        if LOGO.exists():
+        if LOGO_ESCURO.exists():
             slide.shapes.add_picture(
-                str(LOGO), MARGEM, Inches(1.5), height=Inches(1.15)
+                str(LOGO_ESCURO), MARGEM, Inches(1.5), height=Inches(1.15)
             )
         quadro = _caixa(slide, MARGEM, Inches(3.0), Inches(9), Inches(1.1))
         _texto(quadro, titulo, Pt(50), BRANCO, fonte=SERIF, negrito=True,
                primeiro=True)
         quadro = _caixa(slide, MARGEM, Inches(4.1), Inches(9), Inches(0.5))
-        _texto(quadro, subtitulo, SUBTITULO, RGBColor(0xC7, 0xD2, 0xD8),
+        _texto(quadro, subtitulo, SUBTITULO, RGBColor(0xD6, 0xCE, 0xC2),
                italico=True, primeiro=True)
         cartao = _retangulo(slide, MARGEM, Inches(5.0), Inches(8.2), Inches(0.95),
-                            RGBColor(0x22, 0x33, 0x3D))
+                            RGBColor(0x33, 0x31, 0x2C))
         quadro = cartao.text_frame
         quadro.margin_left = Inches(0.25)
         quadro.vertical_anchor = MSO_ANCHOR.MIDDLE
@@ -534,17 +548,23 @@ def montar() -> Deck:
     )
 
     # 2
-    d.topicos(
+    d.cartoes(
         "Roteiro",
         "O caminho de hoje",
         [
-            "1 · O que é e por que importa          6 · Closures e decoradores",
-            "2 · Os pilares                                   7 · Avaliação preguiçosa",
-            "3 · Funções como valores                8 · Recursão",
-            "4 · Ferramental do dia a dia            9 · Estudo de caso: o projeto",
-            "5 · functools                                  10 · PF × Imperativo e limites",
+            ("01", "O que é e por que importa"),
+            ("02", "Os pilares"),
+            ("03", "Funções como valores"),
+            ("04", "Ferramental do dia a dia"),
+            ("05", "functools"),
+            ("06", "Closures e decoradores"),
+            ("07", "Avaliação preguiçosa"),
+            ("08", "Recursão"),
+            ("09", "Estudo de caso: o projeto"),
+            ("10", "PF × imperativo e limites"),
         ],
-        nota="Ao longo do caminho, três pausas com dicas práticas de Python.",
+        colunas=5,
+        nota="No caminho, três pausas com dicas práticas de Python.",
     )
 
     # 3
@@ -552,12 +572,11 @@ def montar() -> Deck:
         "Objetivos",
         "Ao final, você será capaz de:",
         [
-            ("Identificar", "Reconhecer código funcional e seus conceitos em Python real."),
-            ("Escrever", "Aplicar funções puras, HOFs, closures e decoradores com propósito."),
-            ("Justificar", "Explicar POR QUE o estilo funcional ajuda — e onde não compensa."),
+            ("Identificar", "Reconhecer código funcional em Python real."),
+            ("Escrever", "Aplicar funções puras, HOFs e decoradores."),
+            ("Justificar", "Explicar por que ajuda — e onde não compensa."),
         ],
-        nota="A aula usa um sistema real — o projeto Ponte Italia — como fio condutor: "
-             "cada conceito aparece em código que roda.",
+        nota="Cada conceito aparece em código que roda, no projeto Ponte Italia.",
     )
 
     # 4
@@ -572,8 +591,8 @@ def montar() -> Deck:
          ["total = 0", "for n in numeros:", "    total += n"], VERMELHO),
         ("Funcional — O QUE se quer",
          ["total = sum(numeros)"], VERDE),
-        nota="A programação funcional é um estilo declarativo: compomos funções "
-             "em vez de encadear comandos que alteram variáveis.",
+        nota="Estilo declarativo: compomos funções em vez de encadear comandos "
+             "que alteram variáveis.",
     )
 
     # 6
@@ -605,14 +624,11 @@ def montar() -> Deck:
         "Bloco 1 · Honestidade",
         "Python não é Haskell — e tudo bem",
         [
-            ("Funcional onde calcula",
-             "Regras de negócio, transformação de dados, cálculos testáveis."),
-            ("Imperativo nas bordas",
-             "Ler e gravar banco, requisições HTTP, arquivos e relógio."),
+            ("Funcional onde calcula", "Regras de negócio e transformação de dados."),
+            ("Imperativo nas bordas", "Banco, HTTP, arquivos e relógio."),
         ],
         colunas=2,
-        nota="Python é multiparadigma. A boa engenharia não é ser 100% funcional, "
-             "e sim usar o estilo funcional ONDE ele paga.",
+        nota="Não é ser 100% funcional — é usar o estilo ONDE ele paga.",
         fundo_nota=VERDE_CLARO,
     )
 
@@ -649,14 +665,13 @@ def montar() -> Deck:
         "Pilar 2 · Efeitos",
         "O que é um efeito colateral",
         [
-            ("Mutar estado externo", "Variável global, atributo, lista compartilhada."),
-            ("I/O", "Imprimir, ler banco, requisição de rede, arquivo."),
-            ("Depender do ambiente", "Hora atual, número aleatório, variável de ambiente."),
+            ("Mutar estado externo", "Variável global, lista compartilhada."),
+            ("I/O", "Imprimir, ler banco, chamar a rede."),
+            ("Depender do ambiente", "Hora atual, número aleatório."),
         ],
-        nota="Efeitos não são proibidos — são empurrados para as BORDAS. "
-             "O núcleo que calcula fica puro, previsível e testável.",
+        nota="Efeitos não são proibidos — são empurrados para as BORDAS.",
         cor_nota=VERMELHO,
-        fundo_nota=RGBColor(0xFB, 0xE9, 0xEA),
+        fundo_nota=VERMELHO_CLARO,
     )
 
     # 12
@@ -736,12 +751,9 @@ def montar() -> Deck:
         "Pilares · Consequências",
         "Três ganhos que caem no seu colo",
         [
-            ("01 · Testabilidade",
-             "Um teste = três linhas. Sem fixture, sem mock, sem banco de pé."),
-            ("02 · Concorrência segura",
-             "Sem estado compartilhado, dois pedidos simultâneos não colidem."),
-            ("03 · Raciocínio local",
-             "A regra inteira cabe na tela; nada acontece 'à distância'."),
+            ("Testabilidade", "Um teste = três linhas. Sem mock, sem banco."),
+            ("Concorrência segura", "Sem estado compartilhado, ninguém colide."),
+            ("Raciocínio local", "A regra cabe na tela; nada acontece à distância."),
         ],
     )
 
@@ -1248,6 +1260,15 @@ def montar() -> Deck:
         "Esse número vem de contar_perguntas() descendo a árvore inteira.",
     )
 
+    # — o registry de parsers na prática
+    d.imagem(
+        "No projeto · Primeira classe",
+        "Um dicionário de funções, três fontes coletando",
+        "07-radar-filtro-vistos.png",
+        "O filtro por categoria é o mesmo `filter` do pipeline. Cada fonte no "
+        "registry PARSERS é uma linha — o código de coleta nunca muda.",
+    )
+
     # 47
     d.secao("09", "Estudo de caso: Ponte Italia",
             "Onde todos os conceitos se encontram em código que roda")
@@ -1266,12 +1287,11 @@ def montar() -> Deck:
         "O projeto · Arquitetura",
         "Cálculo puro no centro, efeitos nas bordas",
         [
-            ("routers/", "HTTP e banco — fazem o I/O e entregam dados imutáveis."),
-            ("services/", "NÚCLEO PURO: calcular_gap, calcular_status, curadoria, faq."),
-            ("scraper/", "Rede e HTML — coleta educada, isolada por fonte."),
+            ("routers/", "HTTP e banco. Fazem o I/O."),
+            ("services/", "NÚCLEO PURO: calcular_gap, curadoria, faq."),
+            ("scraper/", "Rede e HTML. Isolado por fonte."),
         ],
-        nota="As bordas fazem I/O e entregam dados imutáveis ao núcleo; o núcleo só "
-             "calcula e devolve. Testo o núcleo sem subir nada.",
+        nota="As bordas entregam dados imutáveis; o núcleo só calcula e devolve.",
     )
 
     # 50
@@ -1317,6 +1337,15 @@ def montar() -> Deck:
         "13-email-newsletter.png",
         "agrupar_por_topico() dobra as notícias das últimas 24h nos 10 tópicos, "
         "publica na fila do Redis e o worker .NET renderiza e dispara às 9h.",
+    )
+
+    # a API documentada — evidência de sistema real
+    d.imagem(
+        "O projeto · A API",
+        "Tudo isso é uma API REST documentada",
+        "12-swagger.png",
+        "O Swagger sai de graça do FastAPI com Pydantic: os mesmos schemas "
+        "congelados que garantem a imutabilidade descrevem o contrato.",
     )
 
     # 53
@@ -1376,17 +1405,10 @@ def montar() -> Deck:
         "Limites",
         "Quando a PF NÃO compensa em Python",
         [
-            ("Cópias em excesso",
-             "Recriar grandes estruturas a cada passo custa memória. "
-             "Às vezes mutar local é ok."),
-            ("Recursão profunda",
-             "Sem TCO e com limite ~1000, laços são mais seguros que recursão longa."),
-            ("Legibilidade",
-             "map/filter/reduce encadeados podem ficar ilegíveis — "
-             "comprehension costuma vencer."),
-            ("I/O é inevitável",
-             "Todo sistema real tem efeitos. O objetivo é isolá-los, "
-             "não fingir que não existem."),
+            ("Cópias em excesso", "Recriar estrutura grande custa memória."),
+            ("Recursão profunda", "Sem TCO, limite ~1000. Laço é mais seguro."),
+            ("Legibilidade", "map/filter encadeados ficam ilegíveis."),
+            ("I/O é inevitável", "O objetivo é isolar, não fingir que não existe."),
         ],
         colunas=2,
     )

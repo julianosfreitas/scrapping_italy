@@ -110,7 +110,11 @@ def main() -> int:
 
     # PNG da marca: cliente de e-mail não renderiza SVG. O e-mail usa a
     # variante sálvia, que é a cor do logo impresso no papel.
-    for nome, cor in (("logo-marca.png", VERDE), ("logo-marca-salvia.png", SALVIA)):
+    for nome, cor in (
+        ("logo-marca.png", VERDE),
+        ("logo-marca-salvia.png", SALVIA),
+        ("logo-marca-bege.png", "#BFAE99"),  # sobre fundo escuro
+    ):
         png_marca = colorir(marca, cor)
         png_marca.thumbnail((240, 240), Image.LANCZOS)
         png_marca.save(DESTINO / nome)
