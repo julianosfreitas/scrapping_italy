@@ -126,7 +126,7 @@ def test_curar_agrupa_nos_dez_topicos_na_ordem_da_secao_7() -> None:
 
 
 def test_curar_ignora_noticias_classificadas_como_geral() -> None:
-    """"geral" não é um dos 10 tópicos da seção 7 — fica fora do e-mail."""
+    """ "geral" não é um dos 10 tópicos da seção 7 — fica fora do e-mail."""
     edicao = curar((noticia("Notícia solta", categoria="geral"),), AGORA)
     assert edicao.topicos == ()
     assert edicao.total == 0
