@@ -6,7 +6,7 @@ Todas as páginas usam a MESMA dependência de sessão das rotas de API
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -17,9 +17,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.db import get_sessao
-from app.models import Curso, Estudante, Noticia, Universidade
+from app.models import Curso, EdicaoNewsletter, Estudante, Noticia, Universidade
+from app.routers.newsletter import listar_edicoes
 from app.routers.noticias import montar_feed
 from app.routers.universidades import _curso_publico
+from app.schemas.newsletter import EdicaoPublica
 from app.services.cursos import ordenar_por_prazo
 from app.services.feed import TAMANHO_PAGINA_PADRAO
 
@@ -91,6 +93,28 @@ def radar(
             "categoria_ativa": categoria or "",
             "fonte_ativa": fonte or "",
             "rotulos": ROTULOS_CATEGORIAS,
+        },
+    )
+
+
+@router.get("/newsletter", response_class=HTMLResponse)
+def newsletter(request: Request, sessao: Sessao) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request, "newsletter.html", {"edicoes": listar_edicoes(sessao)}
+    )
+
+
+@router.get("/newsletter/{data_edicao}", response_class=HTMLResponse)
+def newsletter_edicao(request: Request, data_edicao: date, sessao: Sessao) -> HTMLResponse:
+    arquivada = sessao.scalar(select(EdicaoNewsletter).where(EdicaoNewsletter.data == data_edicao))
+    if arquivada is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Edição não encontrada")
+    return templates.TemplateResponse(
+        request,
+        "newsletter_edicao.html",
+        {
+            "edicao": EdicaoPublica.model_validate(arquivada.conteudo),
+            "enviada_em": arquivada.enviada_em,
         },
     )
 
