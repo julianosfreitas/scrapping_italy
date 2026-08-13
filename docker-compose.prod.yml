@@ -1,0 +1,113 @@
+# Compose de PRODUÇÃO — os 5 serviços da seção 3 do README + Caddy na frente.
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Diferenças para o compose de dev:
+#   - mysql e redis NÃO expõem porta no host (só a rede interna os alcança);
+#   - api fica atrás do Caddy, que termina o TLS;
+#   - sem Mailpit: o SMTP é o provedor real (SendGrid/Resend) via .env;
+#   - restart: unless-stopped em tudo.
+#
+# Antes de subir, defina no .env: DOMINIO, ACME_EMAIL, MYSQL_*, JWT_SEGREDO,
+# PONTE_EMAIL/PONTE_SENHA e as credenciais SMTP.
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: ponte_italia_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?defina no .env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-ponte_italia}
+      MYSQL_USER: ${MYSQL_USER:-ponte}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?defina no .env}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: ponte_italia_redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: ./api
+    container_name: ponte_italia_api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      APP_ENV: prod
+      APP_DEBUG: "false"
+      MYSQL_HOST: mysql
+      MYSQL_PORT: "3306"
+      REDIS_HOST: redis
+      UPLOAD_DIR: /dados/uploads
+    volumes:
+      - uploads:/dados/uploads
+    depends_on:
+      mysql: {condition: service_healthy}
+      redis: {condition: service_healthy}
+
+  scraper:
+    build:
+      context: .
+      dockerfile: scraper/Dockerfile
+    container_name: ponte_italia_scraper
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PONTE_API: http://api:8000
+      REDIS_HOST: redis
+    depends_on:
+      api: {condition: service_started}
+
+  newsletter:
+    build:
+      context: ./newsletter
+    container_name: ponte_italia_newsletter
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PONTE_API: http://api:8000
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    depends_on:
+      redis: {condition: service_healthy}
+      api: {condition: service_started}
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: ponte_italia_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMINIO: ${DOMINIO:?defina o domínio no .env}
+      ACME_EMAIL: ${ACME_EMAIL:?defina o e-mail do certificado no .env}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api: {condition: service_started}
+
+volumes:
+  mysql_data:
+  redis_data:
+  uploads:
+  caddy_data:
+  caddy_config:

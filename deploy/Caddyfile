@@ -1,0 +1,35 @@
+# Caddy — proxy reverso com HTTPS automático (Let's Encrypt).
+#
+# O domínio e o e-mail de contato vêm do ambiente, então este arquivo não
+# carrega nada específico de um servidor: defina DOMINIO e ACME_EMAIL no .env
+# de produção antes de subir o compose.
+#
+# Requisitos para o certificado sair:
+#   - DOMINIO apontando (registro A/AAAA) para o IP do servidor;
+#   - portas 80 e 443 abertas.
+
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMINIO} {
+	encode zstd gzip
+
+	# cabeçalhos de segurança básicos
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	# arquivos estáticos com cache longo (o conteúdo muda de nome a cada deploy)
+	@estaticos path /static/*
+	header @estaticos Cache-Control "public, max-age=604800"
+
+	reverse_proxy api:8000 {
+		health_uri /health
+		health_interval 30s
+	}
+}
