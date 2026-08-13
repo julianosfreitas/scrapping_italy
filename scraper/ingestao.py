@@ -64,6 +64,24 @@ def ingerir_noticias(noticias: tuple[NoticiaColetada, ...], api: str, token: str
     return resultado
 
 
+def disparar_curadoria(api: str, token: str, janela_horas: int | None = None) -> dict[str, object]:
+    """Dispara a curadoria da newsletter (POST /api/newsletter/curadoria).
+
+    Quem monta e enfileira a edição é a api — aqui só existe o gatilho, do
+    mesmo jeito que a ingestão do Radar: o scraper nunca fala com o banco.
+    """
+    parametros = {} if janela_horas is None else {"janela_horas": janela_horas}
+    resposta = httpx.post(
+        f"{api}/api/newsletter/curadoria",
+        params=parametros,
+        headers={"Authorization": f"Bearer {token}", "User-Agent": USER_AGENT},
+        timeout=60,
+    )
+    resposta.raise_for_status()
+    edicao: dict[str, object] = resposta.json()
+    return edicao
+
+
 def obter_token(api: str, email: str, senha: str) -> str:
     resposta = httpx.post(f"{api}/api/auth/login", json={"email": email, "senha": senha})
     resposta.raise_for_status()
