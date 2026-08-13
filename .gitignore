@@ -45,3 +45,6 @@ docs/Brookshear_05.ppt
 *.swp
 .DS_Store
 Thumbs.db
+
+# recortes gerados a partir das capturas (derivados, refeitos pelo gerador)
+docs/screenshots/_recortes/
